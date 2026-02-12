@@ -27,22 +27,24 @@
       margin: 0;
     }
 
-    .ui-lab-stub .raa-copy-status {
-      min-height: 18px;
+    .ui-lab-stub .raa-panel {
+      margin-top: 8px;
+      border-top: 1px solid #d1d5db;
+      padding-top: 8px;
     }
   </style>
 <% end %>
 
 <main>
   <section class="ui-lab-stub" id="ui_lab_stub">
+    <div class="raa-toast raa-toast-visible">Copied markdown.</div>
     <div class="raa-toolbar-row">
-      <button class="raa-btn" type="button">Select: Off</button>
-      <button class="raa-btn" type="button">Annotations</button>
+      <button class="raa-btn raa-btn-active" type="button" aria-pressed="true">Select</button>
       <button class="raa-btn" type="button">Copy Markdown</button>
       <a class="raa-btn" href="#">Debug</a>
+      <button class="raa-btn" type="button">Close</button>
       <button class="raa-btn raa-btn-danger" type="button">Clear</button>
     </div>
-    <div class="raa-copy-status">Copied markdown.</div>
     <div class="raa-panel">
       <div class="raa-item">
         <div class="raa-item-header">.sidebar .btn.btn-primary</div>

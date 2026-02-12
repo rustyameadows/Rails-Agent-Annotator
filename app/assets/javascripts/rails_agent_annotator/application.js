@@ -1,19 +1,20 @@
 (function() {
   const APP_ID = "raa-toolbar";
+  const LAUNCHER_ID = "raa-launcher";
   const HIGHLIGHT_ID = "raa-highlight";
 
   function toolbarMarkup(debugPath) {
     return `
       <div class="raa-toolbar-shell" id="${APP_ID}">
+        <div class="raa-toast" data-role="toast" hidden></div>
         <div class="raa-toolbar-row">
-          <button class="raa-btn" type="button" data-action="toggle-select">Select: Off</button>
-          <button class="raa-btn" type="button" data-action="toggle-panel">Annotations</button>
+          <button class="raa-btn" type="button" data-action="toggle-select" aria-pressed="false">Select</button>
           <button class="raa-btn" type="button" data-action="copy">Copy Markdown</button>
           <a class="raa-btn" href="${debugPath}" target="_blank" rel="noopener noreferrer">Debug</a>
+          <button class="raa-btn" type="button" data-action="close">Close</button>
           <button class="raa-btn raa-btn-danger" type="button" data-action="clear">Clear</button>
         </div>
-        <div class="raa-copy-status" data-role="copy-status" aria-live="polite"></div>
-        <div class="raa-panel" data-role="panel" hidden>
+        <div class="raa-panel" data-role="panel">
           <div data-role="annotations"></div>
         </div>
         <datalist id="raa-tag-suggestions">
@@ -221,6 +222,7 @@
       const notes = document.createElement("textarea");
       notes.placeholder = "Write annotation notes...";
       notes.value = annotation.notes || "";
+      notes.dataset.annotationId = annotation.id;
       notes.addEventListener("change", (event) => {
         annotation.notes = event.target.value;
         onChange();
@@ -247,8 +249,25 @@
     });
   }
 
+  function focusAnnotationNotes(list, annotationId) {
+    if (!list || !annotationId) return;
+    const notes = list.querySelector(`textarea[data-annotation-id="${annotationId}"]`);
+    if (!notes) return;
+
+    notes.focus();
+    const end = notes.value.length;
+    notes.setSelectionRange(end, end);
+  }
+
   function createUI(state, debugPath) {
     if (document.getElementById(APP_ID)) return null;
+
+    const launcher = document.createElement("button");
+    launcher.id = LAUNCHER_ID;
+    launcher.className = "raa-btn";
+    launcher.type = "button";
+    launcher.textContent = "Agent Annotation";
+    launcher.hidden = true;
 
     const wrapper = document.createElement("div");
     wrapper.innerHTML = toolbarMarkup(debugPath);
@@ -258,10 +277,11 @@
     highlight.id = HIGHLIGHT_ID;
     highlight.setAttribute("aria-hidden", "true");
 
+    document.body.appendChild(launcher);
     document.body.appendChild(toolbar);
     document.body.appendChild(highlight);
 
-    return { toolbar, highlight };
+    return { toolbar, launcher, highlight };
   }
 
   function loadAllStoredSessions(storageKeyPrefix) {
@@ -442,18 +462,18 @@
     const context = parseContext() || {};
     const storageKeyPrefix = context.storage_key_prefix || "rails_agent_annotator";
     const debugPath = context.mount_path || "/rails_agent_annotator";
+    const visibilityPreferenceKey = `${storageKeyPrefix}:__toolbar_visible`;
     renderDebugNotesDashboard(storageKeyPrefix);
     renderStorageDiagnostics(storageKeyPrefix);
 
     if (!document.getElementById("raa-root")) return;
 
-    document.querySelectorAll("#" + APP_ID + ", #" + HIGHLIGHT_ID).forEach((node) => node.remove());
+    document.querySelectorAll("#" + APP_ID + ", #" + LAUNCHER_ID + ", #" + HIGHLIGHT_ID).forEach((node) => node.remove());
 
     const storageKey = `${storageKeyPrefix}:${window.location.pathname}`;
 
     const state = {
       selectMode: false,
-      panelOpen: false,
       annotations: []
     };
 
@@ -467,12 +487,12 @@
     if (!ui) return;
 
     const selectButton = ui.toolbar.querySelector('[data-action="toggle-select"]');
-    const panelButton = ui.toolbar.querySelector('[data-action="toggle-panel"]');
     const copyButton = ui.toolbar.querySelector('[data-action="copy"]');
+    const closeButton = ui.toolbar.querySelector('[data-action="close"]');
     const clearButton = ui.toolbar.querySelector('[data-action="clear"]');
-    const panel = ui.toolbar.querySelector('[data-role="panel"]');
-    const copyStatus = ui.toolbar.querySelector('[data-role="copy-status"]');
+    const toast = ui.toolbar.querySelector('[data-role="toast"]');
     const annotationsRoot = ui.toolbar.querySelector('[data-role="annotations"]');
+    let toastTimer = null;
 
     const persist = () => {
       window.localStorage.setItem(storageKey, JSON.stringify(state.annotations));
@@ -480,8 +500,23 @@
     };
 
     const updateSelectButton = () => {
-      selectButton.textContent = `Select: ${state.selectMode ? "On" : "Off"}`;
       selectButton.classList.toggle("raa-btn-active", state.selectMode);
+      selectButton.setAttribute("aria-pressed", state.selectMode ? "true" : "false");
+    };
+
+    const setToolbarVisible = (visible) => {
+      ui.toolbar.hidden = !visible;
+      ui.launcher.hidden = visible;
+      window.localStorage.setItem(visibilityPreferenceKey, visible ? "1" : "0");
+
+      if (visible) {
+        state.selectMode = true;
+        updateSelectButton();
+      } else {
+        state.selectMode = false;
+        updateSelectButton();
+        ui.highlight.style.display = "none";
+      }
     };
 
     const setHighlight = (target) => {
@@ -506,10 +541,10 @@
       event.preventDefault();
       event.stopPropagation();
 
-      state.annotations.unshift(captureElement(event.target));
-      state.panelOpen = true;
-      panel.hidden = false;
+      const captured = captureElement(event.target);
+      state.annotations.unshift(captured);
       persist();
+      window.requestAnimationFrame(() => focusAnnotationNotes(annotationsRoot, captured.id));
     };
 
     selectButton.addEventListener("click", () => {
@@ -518,17 +553,12 @@
       if (!state.selectMode) ui.highlight.style.display = "none";
     });
 
-    panelButton.addEventListener("click", () => {
-      state.panelOpen = !state.panelOpen;
-      panel.hidden = !state.panelOpen;
-    });
-
     copyButton.addEventListener("click", async () => {
       const markdown = markdownFor(context, state.annotations);
+      let message = "Copied markdown.";
 
       try {
         await navigator.clipboard.writeText(markdown);
-        copyStatus.textContent = "Copied markdown.";
       } catch (_error) {
         const textArea = document.createElement("textarea");
         textArea.value = markdown;
@@ -536,12 +566,29 @@
         textArea.select();
         document.execCommand("copy");
         textArea.remove();
-        copyStatus.textContent = "Copied markdown (fallback).";
+        message = "Copied markdown (fallback).";
       }
 
-      setTimeout(() => {
-        copyStatus.textContent = "";
-      }, 1500);
+      toast.textContent = message;
+      toast.hidden = false;
+      toast.classList.add("raa-toast-visible");
+
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(() => {
+        toast.classList.remove("raa-toast-visible");
+        window.setTimeout(() => {
+          toast.hidden = true;
+          toast.textContent = "";
+        }, 180);
+      }, 1400);
+    });
+
+    closeButton.addEventListener("click", () => {
+      setToolbarVisible(false);
+    });
+
+    ui.launcher.addEventListener("click", () => {
+      setToolbarVisible(true);
     });
 
     clearButton.addEventListener("click", () => {
@@ -550,12 +597,24 @@
       persist();
     });
 
+    const onKeyDown = (event) => {
+      if (event.key === "Escape" && state.selectMode) {
+        state.selectMode = false;
+        updateSelectButton();
+        ui.highlight.style.display = "none";
+      }
+    };
+
     document.addEventListener("mouseover", onMouseOver, true);
     document.addEventListener("click", onClick, true);
+    document.addEventListener("keydown", onKeyDown, true);
 
     updateSelectButton();
-    panel.hidden = !state.panelOpen;
     renderAnnotationList(state, persist, annotationsRoot);
+
+    const savedVisibility = window.localStorage.getItem(visibilityPreferenceKey);
+    const toolbarVisible = savedVisibility === "1";
+    setToolbarVisible(toolbarVisible);
   }
 
   document.addEventListener("turbo:load", initAnnotator);

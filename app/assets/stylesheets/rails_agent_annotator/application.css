@@ -15,6 +15,32 @@
   padding: 10px;
 }
 
+#raa-launcher {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 2147483646;
+}
+
+.raa-toast {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  border: 1px solid #065f46;
+  border-radius: 8px;
+  background: #ecfdf5;
+  color: #065f46;
+  padding: 6px 10px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.raa-toast-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .raa-toolbar-row {
   display: flex;
   flex-wrap: wrap;
@@ -31,6 +57,11 @@
   padding: 6px 10px;
   cursor: pointer;
   text-decoration: none;
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.raa-btn:hover {
+  background: #e5e7eb;
 }
 
 .raa-btn-active {
@@ -42,18 +73,12 @@
   color: #991b1b;
 }
 
-.raa-copy-status {
-  min-height: 18px;
-  margin-top: 6px;
-  color: #065f46;
-}
-
 .raa-panel {
-  margin-top: 8px;
+  margin-top: 10px;
   max-height: 320px;
   overflow: auto;
   border-top: 1px solid #d1d5db;
-  padding-top: 8px;
+  padding-top: 10px;
 }
 
 .raa-item {
@@ -109,6 +134,11 @@
 }
 
 @media (max-width: 640px) {
+  #raa-launcher {
+    right: 12px;
+    bottom: 12px;
+  }
+
   #raa-toolbar {
     left: 12px;
     right: 12px;
