@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>rails_agent_annotator | Install Guide</title>
+    <style>
+      :root {
+        --bg: #090909;
+        --panel: #121212;
+        --ink: #f2f2f2;
+        --muted: #9d9d9d;
+        --line: #2b2b2b;
+        --blue: #4da3ff;
+        --blue-strong: #197dff;
+        --yellow: #facc15;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; }
+      body {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        color: var(--ink);
+        background: var(--bg);
+      }
+      .wrap {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 34px 22px 72px;
+      }
+      .nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 26px;
+      }
+      .nav a {
+        text-decoration: none;
+        color: var(--ink);
+        border: 1px solid var(--line);
+        padding: 9px 12px;
+        background: #101010;
+        font-size: 0.88rem;
+      }
+      .nav a:last-child {
+        border-color: var(--blue);
+        color: var(--blue);
+      }
+      .panel {
+        border: 1px solid var(--line);
+        background: var(--panel);
+        padding: 18px;
+        margin-bottom: 14px;
+      }
+      h1, h2 { margin-top: 0; }
+      h1 {
+        font-size: 1.25rem;
+        margin-bottom: 10px;
+      }
+      h2 {
+        font-size: 0.96rem;
+        color: #d7d7d7;
+        margin-bottom: 10px;
+      }
+      p {
+        color: var(--muted);
+        font-size: 0.9rem;
+        line-height: 1.55;
+      }
+      pre {
+        margin: 0;
+        background: #050505;
+        border: 1px solid var(--line);
+        color: #ebebeb;
+        padding: 13px;
+        overflow-x: auto;
+        font-size: 0.86rem;
+        line-height: 1.45;
+      }
+      code {
+        font-family: inherit;
+        white-space: pre;
+      }
+      ol {
+        margin: 12px 0 0;
+        padding-left: 18px;
+        color: #cbcbcb;
+        font-size: 0.9rem;
+        line-height: 1.5;
+      }
+      li { margin-bottom: 8px; }
+      .note {
+        border-left: 2px solid var(--yellow);
+        padding-left: 10px;
+      }
+      .step {
+        color: var(--blue);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <nav class="nav">
+        <a href="./index.html">Back</a>
+        <a href="https://github.com/rustyameadows/Rails-Agent-Annotator.git">GitHub</a>
+      </nav>
+
+      <section class="panel">
+        <h1>Install / Usage Guide</h1>
+        <p>Use local path dependency while iterating, then switch to git/release when stable.</p>
+      </section>
+
+      <section class="panel">
+        <h2><span class="step">1.</span> Add gem to host app</h2>
+<pre><code>group :development do
+  gem "rails_agent_annotator", path: "/absolute/path/to/agent-feedback-gem"
+end</code></pre>
+      </section>
+
+      <section class="panel">
+        <h2><span class="step">2.</span> Install generator</h2>
+<pre><code>bundle install
+bin/rails generate rails_agent_annotator:install</code></pre>
+      </section>
+
+      <section class="panel">
+        <h2><span class="step">3.</span> Run app and annotate</h2>
+<pre><code>bin/rails server</code></pre>
+        <ol>
+          <li>Enable select mode in overlay.</li>
+          <li>Click target element and write notes.</li>
+          <li>Copy markdown and paste into coding agent.</li>
+          <li>Open Debug from overlay to inspect stored notes.</li>
+        </ol>
+      </section>
+
+      <section class="panel">
+        <h2><span class="step">4.</span> Config (initializer)</h2>
+<pre><code>RailsAgentAnnotator.configure do |config|
+  config.enabled_environments = %w[development]
+  config.enabled = Rails.env.development?
+  config.mount_path = "/__agent_annotator"
+  config.storage_key_prefix = "rails_agent_annotator"
+end</code></pre>
+        <p class="note">v1 persistence is localStorage only (browser-local, per route path).</p>
+      </section>
+    </main>
+  </body>
+</html>
