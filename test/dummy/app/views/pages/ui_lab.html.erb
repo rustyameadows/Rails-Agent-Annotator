@@ -1,0 +1,68 @@
+<main class="demo-wrap stack">
+  <section class="card" data-controller="ui-lab" id="ui_lab_intro">
+    <h1>Overlay UI Lab</h1>
+    <p class="muted">
+      This page is a sandbox for refining the annotator look and interaction language.
+      Use the real overlay to annotate these mock controls and tell the agent what to change.
+    </p>
+  </section>
+
+  <section class="ui-lab-grid">
+    <article class="card ui-lab-card" id="ui_lab_overlay_mock" data-controller="overlay-preview">
+      <h2>Overlay Mock</h2>
+      <p class="muted">Visual stub of toolbar + annotation panel components.</p>
+
+      <div class="lab-toolbar-preview">
+        <button type="button" class="lab-btn lab-btn-active">Select: On</button>
+        <button type="button" class="lab-btn">Annotations</button>
+        <button type="button" class="lab-btn">Copy Markdown</button>
+        <button type="button" class="lab-btn">Debug</button>
+        <button type="button" class="lab-btn lab-btn-danger">Clear</button>
+      </div>
+
+      <div class="lab-panel-preview" id="lab_annotations_panel">
+        <div class="lab-item-preview">
+          <strong>.sidebar .btn.btn-primary</strong>
+          <p class="muted">Text: Save</p>
+          <div class="lab-fields">
+            <input value="layout" aria-label="tag" />
+            <select aria-label="priority">
+              <option>P0</option>
+              <option selected>P1</option>
+              <option>P2</option>
+            </select>
+          </div>
+          <textarea aria-label="notes">Increase horizontal padding and align icon/text baseline.</textarea>
+        </div>
+      </div>
+    </article>
+
+    <article class="card ui-lab-card" id="ui_lab_target_surface" data-controller="surface-preview">
+      <h2>Target Surface</h2>
+      <p class="muted">Practice selecting these elements and writing concrete styling feedback.</p>
+
+      <div class="hero-actions" id="ui_lab_target_buttons">
+        <button class="btn btn-primary" type="button">Primary Action</button>
+        <button class="btn" type="button">Secondary Action</button>
+      </div>
+
+      <div class="lab-list" id="ui_lab_list_group">
+        <div class="lab-list-row">Compact row spacing option</div>
+        <div class="lab-list-row">Balanced row spacing option</div>
+        <div class="lab-list-row">Generous row spacing option</div>
+      </div>
+    </article>
+  </section>
+
+  <section class="card" id="ui_lab_prompt_helper">
+    <h2>Prompt helper</h2>
+    <p class="muted">Use this structure when asking for overlay improvements:</p>
+    <pre class="lab-pre">- Page: /ui_lab
+- Element: (paste selector from annotation)
+- Intent: (e.g., readability, spacing, hierarchy)
+- Change request:
+  - ...
+- Constraint:
+  - Preserve existing behavior and interactions.</pre>
+  </section>
+</main>

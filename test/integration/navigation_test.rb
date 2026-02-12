@@ -19,6 +19,12 @@ class NavigationTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_includes response.body, "id=\"raa-root\""
     assert_includes response.body, "name=\"project[name]\""
+
+    get "/ui_lab"
+    assert_response :success
+    assert_includes response.body, "id=\"raa-root\""
+    assert_includes response.body, "Overlay UI Lab"
+    assert_includes response.body, "id=\"ui_lab_overlay_mock\""
   end
 
   test "debug route is available when engine mounted" do

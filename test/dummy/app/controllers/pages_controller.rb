@@ -3,4 +3,6 @@ class PagesController < ApplicationController
     @featured_posts = BlogPostsController::POSTS.first(2)
     @featured_projects = ProjectsController::PROJECTS.first(2)
   end
+
+  def ui_lab; end
 end
