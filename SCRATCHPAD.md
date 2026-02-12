@@ -14,6 +14,11 @@ This file is a persistent working notebook to keep context across sessions.
   - Added installer generator (`rails_agent_annotator:install`) with initializer template and layout injection.
   - Added integration tests for injection and context payload plus configuration tests.
   - Added compatibility scaffolding (`Appraisals`, `gemfiles/rails_7.gemfile`, `gemfiles/rails_8.gemfile`).
+  - Expanded dummy app into richer review surface:
+    - Marketing home
+    - Blog resources (`index`, `show`)
+    - Project resources (`index`, `show`, `edit`, `update`)
+  - Added spec parity report in `SPEC_PARITY.md`.
   - Validation notes:
     - `bundle exec rake test` exits successfully in this environment.
     - `bundle exec rails test` fails due local minitest/railties version mismatch in environment.
@@ -41,6 +46,7 @@ This file is a persistent working notebook to keep context across sessions.
 - Validate in target host app via local path gem and installer.
 - Resolve local test runner mismatch (`rails test` + minitest version skew) in environment used for CI.
 - Final docs pass and release prep (`CHANGELOG`, tagging strategy).
+ - Run review pass with user on expanded demo pages and collect UI/UX notes from real interactions.
 
 ## Handoff Checklist
 - Update this file at end of each work session:

@@ -27,3 +27,10 @@
 - [ ] Create at least 2 annotations and reload page
 - [ ] Copy Markdown and verify output format
 - [ ] Navigate through Turbo flow and reconfirm behavior
+
+## Demo Review Checklist
+- [x] Multi-page marketing surface
+- [x] Blog resource pages (`index`, `show`)
+- [x] Projects resource pages (`index`, `show`, `edit`)
+- [x] Turbo-frame presence for context capture validation
+- [x] Route-context coverage test for resource pages
