@@ -8,5 +8,7 @@ RailsAgentAnnotator.configure do |config|
 
   config.mount_path = "/__agent_annotator"
   config.storage_key_prefix = "rails_agent_annotator"
+  # Optional explicit app key for storage namespacing. Defaults to app class/module name.
+  # config.app_id = "my_app_unique_key"
   config.markdown_template = :v1
 end

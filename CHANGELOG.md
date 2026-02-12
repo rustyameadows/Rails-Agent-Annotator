@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Added app-scoped storage isolation (`app_id`) to prevent annotation collisions across different local Rails apps on the same host/port.
 - Fixed installer generator discovery by moving it to Rails conventional path under `lib/generators/...`.
 - Added `/ui_lab` two-bar setup: centered dumb HTML/CSS stub plus real working toolbar.
 - Added `Escape` key support to exit active select mode.

@@ -38,6 +38,19 @@ module RailsAgentAnnotator
       }
     end
 
+    def resolved_app_id
+      configured = configuration.app_id
+      return configured.to_s if configured.present?
+
+      candidate = if Rails.application.class.respond_to?(:module_parent_name)
+        Rails.application.class.module_parent_name
+      else
+        Rails.application.class.name.to_s.split("::").first
+      end
+
+      candidate.to_s.presence || "rails_app"
+    end
+
     private
 
     def environment_allowed?(config)

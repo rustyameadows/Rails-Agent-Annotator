@@ -43,6 +43,15 @@
     return new Date().toISOString();
   }
 
+  function normalizedAppId(appId) {
+    const raw = (appId || "rails_app").toString().trim();
+    return raw.length > 0 ? raw.replace(/\s+/g, "_") : "rails_app";
+  }
+
+  function storageNamespacePrefix(storageKeyPrefix, appId) {
+    return `${storageKeyPrefix}:${normalizedAppId(appId)}`;
+  }
+
   function selectorFor(element) {
     if (!element || element.nodeType !== Node.ELEMENT_NODE) return "";
     if (element.id) return `#${CSS.escape(element.id)}`;
@@ -284,8 +293,8 @@
     return { toolbar, launcher, highlight };
   }
 
-  function loadAllStoredSessions(storageKeyPrefix) {
-    const prefix = `${storageKeyPrefix}:`;
+  function loadAllStoredSessions(namespacePrefix) {
+    const prefix = `${namespacePrefix}:`;
     const sessions = [];
 
     for (let i = 0; i < window.localStorage.length; i += 1) {
@@ -309,8 +318,8 @@
     return sessions;
   }
 
-  function collectStorageDiagnostics(storageKeyPrefix) {
-    const prefix = `${storageKeyPrefix}:`;
+  function collectStorageDiagnostics(namespacePrefix) {
+    const prefix = `${namespacePrefix}:`;
     const matched = [];
     let parseErrors = 0;
     let emptyArrays = 0;
@@ -348,18 +357,18 @@
     };
   }
 
-  function renderStorageDiagnostics(storageKeyPrefix) {
+  function renderStorageDiagnostics(namespacePrefix) {
     const root = document.getElementById("raa-debug-diagnostics");
     if (!root) return;
 
-    const data = collectStorageDiagnostics(storageKeyPrefix);
+    const data = collectStorageDiagnostics(namespacePrefix);
     root.innerHTML = "";
 
     const summary = document.createElement("div");
     summary.className = "raa-debug-muted";
     summary.innerHTML = `
       <div>Origin: <code>${data.origin}</code></div>
-      <div>Prefix: <code>${data.prefix}</code></div>
+      <div>Namespace: <code>${data.prefix}</code></div>
       <div>localStorage keys: ${data.totalLocalStorageKeys}</div>
       <div>Matched keys: ${data.matchedKeyCount}</div>
       <div>Matched empty arrays: ${data.emptyArrays}</div>
@@ -380,12 +389,12 @@
     root.appendChild(list);
   }
 
-  function renderDebugNotesDashboard(storageKeyPrefix) {
+  function renderDebugNotesDashboard(namespacePrefix) {
     const minimap = document.getElementById("raa-debug-minimap");
     const notesRoot = document.getElementById("raa-debug-notes");
     if (!minimap || !notesRoot) return;
 
-    const sessions = loadAllStoredSessions(storageKeyPrefix);
+    const sessions = loadAllStoredSessions(namespacePrefix);
     minimap.innerHTML = "";
     notesRoot.innerHTML = "";
 
@@ -461,16 +470,19 @@
   function initAnnotator() {
     const context = parseContext() || {};
     const storageKeyPrefix = context.storage_key_prefix || "rails_agent_annotator";
+    const appId = context.app_id || "rails_app";
+    const namespacePrefix = storageNamespacePrefix(storageKeyPrefix, appId);
     const debugPath = context.mount_path || "/rails_agent_annotator";
-    const visibilityPreferenceKey = `${storageKeyPrefix}:__toolbar_visible`;
-    renderDebugNotesDashboard(storageKeyPrefix);
-    renderStorageDiagnostics(storageKeyPrefix);
+    const visibilityPreferenceKey = `${namespacePrefix}:__toolbar_visible`;
+    renderDebugNotesDashboard(namespacePrefix);
+    renderStorageDiagnostics(namespacePrefix);
 
     if (!document.getElementById("raa-root")) return;
 
     document.querySelectorAll("#" + APP_ID + ", #" + LAUNCHER_ID + ", #" + HIGHLIGHT_ID).forEach((node) => node.remove());
 
-    const storageKey = `${storageKeyPrefix}:${window.location.pathname}`;
+    const storageKey = `${namespacePrefix}:${window.location.pathname}`;
+    const legacyStorageKey = `${storageKeyPrefix}:${window.location.pathname}`;
 
     const state = {
       selectMode: false,
@@ -481,6 +493,20 @@
       state.annotations = JSON.parse(window.localStorage.getItem(storageKey) || "[]");
     } catch (_error) {
       state.annotations = [];
+    }
+
+    // One-time migration from legacy (non app-scoped) storage key.
+    if (!state.annotations.length) {
+      try {
+        const legacy = JSON.parse(window.localStorage.getItem(legacyStorageKey) || "[]");
+        if (Array.isArray(legacy) && legacy.length > 0) {
+          state.annotations = legacy;
+          window.localStorage.setItem(storageKey, JSON.stringify(legacy));
+          window.localStorage.removeItem(legacyStorageKey);
+        }
+      } catch (_error) {
+        // Ignore malformed legacy data.
+      }
     }
 
     const ui = createUI(state, debugPath);

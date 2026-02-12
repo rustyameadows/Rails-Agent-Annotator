@@ -43,4 +43,12 @@ class RailsAgentAnnotatorTest < ActiveSupport::TestCase
       assert_not RailsAgentAnnotator.enabled_for?(ApplicationController.new)
     end
   end
+
+  test "resolved app id uses configured override" do
+    RailsAgentAnnotator.configure do |config|
+      config.app_id = "custom_app_id"
+    end
+
+    assert_equal "custom_app_id", RailsAgentAnnotator.resolved_app_id
+  end
 end

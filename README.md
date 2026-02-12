@@ -63,6 +63,8 @@ RailsAgentAnnotator.configure do |config|
   config.authorize = nil # ->(controller) { controller.current_user&.admin? }
   config.mount_path = "/__agent_annotator"
   config.storage_key_prefix = "rails_agent_annotator"
+  # Optional explicit app key for storage isolation (auto-derived by default).
+  # config.app_id = "my_app_unique_key"
   config.markdown_template = :v1
 end
 ```
@@ -72,6 +74,7 @@ end
 - Disabled outside configured environments
 - `staging` requires explicit `allow_in_staging = true`
 - Optional authorization hook for restricted rollout
+- Storage isolation is app-scoped (prevents cross-project note collisions on the same localhost host/port)
 
 ## Usage
 

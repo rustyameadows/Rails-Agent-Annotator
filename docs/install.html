@@ -140,6 +140,8 @@ bin/rails generate rails_agent_annotator:install</code></pre>
   config.enabled = Rails.env.development?
   config.mount_path = "/__agent_annotator"
   config.storage_key_prefix = "rails_agent_annotator"
+  # Optional explicit app key for storage isolation.
+  # config.app_id = "my_app_unique_key"
 end</code></pre>
         <p class="note">v1 persistence is localStorage only (browser-local, per route path).</p>
       </section>
