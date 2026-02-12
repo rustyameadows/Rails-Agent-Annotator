@@ -81,6 +81,16 @@ end
 4. Add note/tag/priority in the panel.
 5. Click `Copy Markdown` and paste into your coding agent.
 
+## Demo Surface (dummy app)
+
+When running this gem repo directly (`bundle exec rails s`), use:
+- `/` marketing page
+- `/blog_posts` and `/blog_posts/:id`
+- `/projects`, `/projects/:id`, `/projects/:id/edit`
+- `/rails_agent_annotator` debug endpoint
+
+These routes are designed as a richer annotation playground with cards, tables, forms, and turbo-frame regions.
+
 ## Example Markdown Output
 
 ```text

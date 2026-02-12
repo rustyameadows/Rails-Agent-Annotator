@@ -1,0 +1,33 @@
+<main class="demo-wrap stack">
+  <section class="card" data-controller="projects-summary">
+    <h1>Projects</h1>
+    <p class="muted">Annotate table density, status styling, and action hierarchy.</p>
+  </section>
+
+  <section class="card" data-controller="projects-table">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Owner</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @projects.each do |project| %>
+          <tr>
+            <td><%= project[:name] %></td>
+            <td><%= project[:owner] %></td>
+            <td><span class="pill"><%= project[:status] %></span></td>
+            <td>
+              <%= link_to "View", project_path(project[:id]) %>
+              |
+              <%= link_to "Edit", edit_project_path(project[:id]) %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </section>
+</main>

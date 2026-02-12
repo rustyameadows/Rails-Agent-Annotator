@@ -1,0 +1,39 @@
+<main class="demo-wrap grid-two">
+  <section class="card" data-controller="project-form" id="project_edit_form">
+    <h1>Edit <%= @project[:name] %></h1>
+    <p class="muted">Demo form only. Submit redirects with a flash notice.</p>
+
+    <%= form_with url: project_path(@project[:id]), method: :patch do %>
+      <div class="field">
+        <label for="project_name">Name</label>
+        <input id="project_name" name="project[name]" value="<%= @project[:name] %>">
+      </div>
+
+      <div class="field">
+        <label for="project_status">Status</label>
+        <select id="project_status" name="project[status]">
+          <% ["Backlog", "In Progress", "Review", "Done"].each do |status| %>
+            <option value="<%= status %>" <%= "selected" if @project[:status] == status %>><%= status %></option>
+          <% end %>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="project_summary">Summary</label>
+        <textarea id="project_summary" name="project[summary]" rows="5"><%= @project[:summary] %></textarea>
+      </div>
+
+      <button class="btn btn-primary" type="submit">Save Project</button>
+    <% end %>
+  </section>
+
+  <aside class="card" data-controller="editor-help">
+    <h2>What to annotate here</h2>
+    <ul class="list-clean">
+      <li>Input spacing and label readability</li>
+      <li>Submit button prominence and size</li>
+      <li>Enter-key behavior expectations</li>
+      <li>Consistency with sidebar/action buttons</li>
+    </ul>
+  </aside>
+</main>

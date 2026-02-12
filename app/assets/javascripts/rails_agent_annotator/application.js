@@ -173,6 +173,7 @@
       const tagInput = document.createElement("input");
       tagInput.type = "text";
       tagInput.placeholder = "tag (bug, layout, behavior...)";
+      tagInput.setAttribute("list", "raa-tag-suggestions");
       tagInput.value = annotation.tag || "";
       tagInput.addEventListener("change", (event) => {
         annotation.tag = event.target.value.trim();
@@ -237,6 +238,13 @@
       <div id="raa-panel" hidden>
         <div id="raa-annotations"></div>
       </div>
+      <datalist id="raa-tag-suggestions">
+        <option value="bug"></option>
+        <option value="copy"></option>
+        <option value="layout"></option>
+        <option value="behavior"></option>
+        <option value="feature"></option>
+      </datalist>
     `;
 
     const highlight = document.createElement("div");

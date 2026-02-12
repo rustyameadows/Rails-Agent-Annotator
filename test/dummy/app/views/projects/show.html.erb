@@ -1,0 +1,24 @@
+<main class="demo-wrap grid-two">
+  <section class="card" data-controller="project-details">
+    <h1><%= @project[:name] %></h1>
+    <p class="muted"><%= @project[:summary] %></p>
+    <p><strong>Owner:</strong> <%= @project[:owner] %></p>
+    <p><strong>Status:</strong> <span class="pill"><%= @project[:status] %></span></p>
+
+    <div class="hero-actions">
+      <%= link_to "Edit Project", edit_project_path(@project[:id]), class: "btn btn-primary" %>
+      <%= link_to "All Projects", projects_path, class: "btn" %>
+    </div>
+  </section>
+
+  <aside class="card" data-controller="project-notes" id="project_notes_panel">
+    <h2>Current QA Notes</h2>
+    <turbo-frame id="project_form">
+      <ul class="list-clean">
+        <% @project[:notes].each do |note| %>
+          <li><%= note %></li>
+        <% end %>
+      </ul>
+    </turbo-frame>
+  </aside>
+</main>

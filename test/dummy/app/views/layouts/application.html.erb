@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title><%= content_for(:title) || "Dummy" %></title>
+    <title><%= content_for(:title) || "Annotator Demo" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
@@ -9,15 +9,26 @@
     <%= csp_meta_tag %>
 
     <%= yield :head %>
-
-    <link rel="icon" href="/icon.png" type="image/png">
-    <link rel="icon" href="/icon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/icon.png">
-
     <%= stylesheet_link_tag :app %>
   </head>
 
-  <body>
+  <body class="demo-shell">
+    <header class="demo-header">
+      <div class="demo-header__inner">
+        <%= link_to "Agent Annotator Demo", root_path, class: "demo-brand" %>
+        <nav class="demo-nav">
+          <%= link_to "Marketing", root_path %>
+          <%= link_to "Blog", blog_posts_path %>
+          <%= link_to "Projects", projects_path %>
+          <%= link_to "Debug", "/rails_agent_annotator" %>
+        </nav>
+      </div>
+    </header>
+
+    <% if flash[:notice].present? %>
+      <p class="demo-flash"><%= flash[:notice] %></p>
+    <% end %>
+
     <%= yield %>
     <%= rails_agent_annotator %>
   </body>

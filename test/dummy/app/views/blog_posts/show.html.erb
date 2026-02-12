@@ -1,0 +1,20 @@
+<main class="demo-wrap">
+  <article class="card" data-controller="blog-post" id="blog_post_content">
+    <span class="pill"><%= @post[:category] %></span>
+    <h1><%= @post[:title] %></h1>
+    <p class="muted"><%= @post[:excerpt] %></p>
+
+    <turbo-frame id="post_body_frame">
+      <p><%= @post[:body] %></p>
+      <p>
+        Try selecting this paragraph and adding a behavior note for keyboard interactions,
+        or a copy note for sentence clarity.
+      </p>
+    </turbo-frame>
+
+    <div class="hero-actions">
+      <%= link_to "Back to Blog", blog_posts_path, class: "btn btn-primary" %>
+      <%= link_to "Go to Projects", projects_path, class: "btn" %>
+    </div>
+  </article>
+</main>

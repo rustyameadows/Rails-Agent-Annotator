@@ -10,6 +10,17 @@ class NavigationTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "rails_agent_annotator/application.js"
   end
 
+  test "annotator injector renders across demo resources" do
+    get "/blog_posts"
+    assert_response :success
+    assert_includes response.body, "id=\"raa-root\""
+
+    get "/projects/atlas/edit"
+    assert_response :success
+    assert_includes response.body, "id=\"raa-root\""
+    assert_includes response.body, "name=\"project[name]\""
+  end
+
   test "debug route is available when engine mounted" do
     get "/rails_agent_annotator"
 

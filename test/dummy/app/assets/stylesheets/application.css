@@ -1,15 +1,207 @@
-/*
- * This is a manifest file that'll be compiled into application.css, which will include all the files
- * listed below.
- *
- * Any CSS and SCSS file within this directory, lib/assets/stylesheets, vendor/assets/stylesheets,
- * or any plugin's vendor/assets/stylesheets directory can be referenced here using a relative path.
- *
- * You're free to add application-wide styles to this file and they'll appear at the bottom of the
- * compiled file so the styles you add here take precedence over styles defined in any other CSS/SCSS
- * files in this directory. Styles in this file should be added after the last require_* statement.
- * It is generally better to create a new file per style scope.
- *
- *= require_tree .
- *= require_self
- */
+:root {
+  --bg: #f4f7fb;
+  --ink: #122033;
+  --brand: #0d9488;
+  --brand-dark: #0f766e;
+  --card: #ffffff;
+  --line: #d5deeb;
+  --muted: #49627e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body.demo-shell {
+  margin: 0;
+  font-family: "Sora", "Avenir Next", "Segoe UI", sans-serif;
+  color: var(--ink);
+  background: radial-gradient(circle at top left, #dff6f3 0%, var(--bg) 42%);
+}
+
+.demo-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: blur(4px);
+  background: rgba(255, 255, 255, 0.88);
+  border-bottom: 1px solid var(--line);
+}
+
+.demo-header__inner {
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.demo-brand {
+  text-decoration: none;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.demo-nav {
+  display: flex;
+  gap: 16px;
+}
+
+.demo-nav a {
+  text-decoration: none;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.demo-nav a:hover {
+  color: var(--brand-dark);
+}
+
+.demo-wrap {
+  max-width: 1060px;
+  margin: 24px auto;
+  padding: 0 20px 36px;
+}
+
+.demo-flash {
+  max-width: 1060px;
+  margin: 14px auto 0;
+  padding: 10px 20px;
+  border-radius: 10px;
+  background: #dcfce7;
+  color: #14532d;
+}
+
+.hero {
+  background: linear-gradient(145deg, #10324a, #0b516b);
+  color: #f8fafc;
+  border-radius: 18px;
+  padding: 28px;
+  display: grid;
+  gap: 14px;
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(1.6rem, 3.2vw, 2.5rem);
+}
+
+.hero p {
+  margin: 0;
+  max-width: 60ch;
+  color: #d7edf7;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--brand);
+  color: #ffffff;
+}
+
+.btn-secondary {
+  border-color: #83d9d1;
+  color: #d5fbf7;
+}
+
+.grid-two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 6px 16px rgba(19, 44, 75, 0.06);
+}
+
+.card h2,
+.card h3 {
+  margin-top: 0;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.pill {
+  display: inline-block;
+  background: #e0f2fe;
+  color: #0c4a6e;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.list-clean {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.stack {
+  display: grid;
+  gap: 12px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  padding: 10px 8px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.field input,
+.field textarea,
+.field select {
+  width: 100%;
+  border: 1px solid #a9bbcf;
+  border-radius: 10px;
+  padding: 10px;
+  font: inherit;
+}
+
+@media (max-width: 800px) {
+  .grid-two {
+    grid-template-columns: 1fr;
+  }
+
+  .demo-header__inner {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+}

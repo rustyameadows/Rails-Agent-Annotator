@@ -1,0 +1,40 @@
+<main class="demo-wrap">
+  <section class="hero" data-controller="marketing cta">
+    <span class="pill">Demo Surface</span>
+    <h1>Ship UI feedback to an agent without ambiguity</h1>
+    <p>
+      Select any element, capture route + controller context, and hand an implementation-ready Markdown brief
+      to your coding agent.
+    </p>
+    <div class="hero-actions" id="hero_actions">
+      <%= link_to "Explore Blog", blog_posts_path, class: "btn btn-primary" %>
+      <%= link_to "Browse Projects", projects_path, class: "btn btn-secondary" %>
+    </div>
+  </section>
+
+  <section class="grid-two">
+    <article class="card" data-controller="feed">
+      <h2>Featured Posts</h2>
+      <ul class="list-clean">
+        <% @featured_posts.each do |post| %>
+          <li>
+            <strong><%= link_to post[:title], blog_post_path(post[:id]) %></strong>
+            <div class="muted"><%= post[:excerpt] %></div>
+          </li>
+        <% end %>
+      </ul>
+    </article>
+
+    <article class="card" data-controller="project-list">
+      <h2>Featured Projects</h2>
+      <ul class="list-clean">
+        <% @featured_projects.each do |project| %>
+          <li>
+            <strong><%= link_to project[:name], project_path(project[:id]) %></strong>
+            <div class="muted"><%= project[:summary] %></div>
+          </li>
+        <% end %>
+      </ul>
+    </article>
+  </section>
+</main>

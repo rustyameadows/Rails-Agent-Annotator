@@ -1,0 +1,15 @@
+<main class="demo-wrap stack">
+  <section class="card" data-controller="blog-list">
+    <h1>Blog</h1>
+    <p class="muted">Use this page to annotate list layouts, metadata hierarchy, and CTA clarity.</p>
+  </section>
+
+  <% @posts.each do |post| %>
+    <article class="card" data-controller="blog-card">
+      <span class="pill"><%= post[:category] %></span>
+      <h2><%= link_to post[:title], blog_post_path(post[:id]) %></h2>
+      <p class="muted"><%= post[:excerpt] %></p>
+      <%= link_to "Read", blog_post_path(post[:id]), class: "btn btn-primary" %>
+    </article>
+  <% end %>
+</main>
