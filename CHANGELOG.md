@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Fixed installer generator discovery by moving it to Rails conventional path under `lib/generators/...`.
 - Added `/ui_lab` two-bar setup: centered dumb HTML/CSS stub plus real working toolbar.
 - Added `Escape` key support to exit active select mode.
 - Updated select button to state-only styling (no `On/Off` label text).

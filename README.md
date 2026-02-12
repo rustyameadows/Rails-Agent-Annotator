@@ -33,13 +33,13 @@ Then install:
 
 ```bash
 bundle install
-bin/rails rails_agent_annotator:install
+bin/rails generate rails_agent_annotator:install
 ```
 
 Optional (mount debug endpoint):
 
 ```bash
-bin/rails rails_agent_annotator:install --mount
+bin/rails generate rails_agent_annotator:install --mount
 ```
 
 ## Host App Integration
@@ -137,7 +137,7 @@ Then run:
 
 ```bash
 bundle install
-bin/rails rails_agent_annotator:install
+bin/rails generate rails_agent_annotator:install
 bin/rails server
 ```
 
