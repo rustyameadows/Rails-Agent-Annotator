@@ -106,13 +106,13 @@
 
       <section class="panel">
         <h1>Install / Usage Guide</h1>
-        <p>Use local path dependency while iterating, then switch to git/release when stable.</p>
+        <p>Install from GitHub for shared usage across projects and teammates.</p>
       </section>
 
       <section class="panel">
         <h2><span class="step">1.</span> Add gem to host app</h2>
 <pre><code>group :development do
-  gem "rails_agent_annotator", path: "/absolute/path/to/agent-feedback-gem"
+  gem "rails_agent_annotator", git: "https://github.com/rustyameadows/Rails-Agent-Annotator.git", branch: "main"
 end</code></pre>
       </section>
 
@@ -142,6 +142,12 @@ bin/rails generate rails_agent_annotator:install</code></pre>
   config.storage_key_prefix = "rails_agent_annotator"
 end</code></pre>
         <p class="note">v1 persistence is localStorage only (browser-local, per route path).</p>
+      </section>
+
+      <section class="panel">
+        <h2><span class="step">5.</span> Local development override (optional)</h2>
+<pre><code>gem "rails_agent_annotator", path: "/absolute/path/to/agent-feedback-gem"</code></pre>
+        <p class="note">Use this only when iterating on the gem locally.</p>
       </section>
     </main>
   </body>

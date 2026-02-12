@@ -25,7 +25,7 @@ Add to your host app Gemfile in development:
 
 ```ruby
 group :development do
-  gem "rails_agent_annotator", path: "/absolute/path/to/agent-feedback-gem"
+  gem "rails_agent_annotator", git: "https://github.com/rustyameadows/Rails-Agent-Annotator.git", branch: "main"
 end
 ```
 
@@ -142,6 +142,12 @@ bin/rails server
 ```
 
 This is the normal iterative workflow. You only need GitHub for sharing, CI, or release publication.
+
+### Install from GitHub (alternative to local path)
+
+```ruby
+gem "rails_agent_annotator", git: "https://github.com/rustyameadows/Rails-Agent-Annotator.git", branch: "main"
+```
 
 ## Rails 7/8 Compatibility Strategy
 
