@@ -12,22 +12,25 @@
     <%= stylesheet_link_tag :app %>
   </head>
 
-  <body class="demo-shell">
-    <header class="demo-header">
-      <div class="demo-header__inner">
-        <%= link_to "Agent Annotator Demo", root_path, class: "demo-brand" %>
-        <nav class="demo-nav">
-          <%= link_to "Marketing", root_path %>
-          <%= link_to "Blog", blog_posts_path %>
-          <%= link_to "Projects", projects_path %>
-          <%= link_to "UI Lab", "/ui_lab" %>
-          <%= link_to "Debug", "/rails_agent_annotator" %>
-        </nav>
-      </div>
-    </header>
+  <% ui_lab_mode = controller_name == "pages" && action_name == "ui_lab" %>
+  <body class="<%= ui_lab_mode ? "ui-lab-shell" : "demo-shell" %>">
+    <% unless ui_lab_mode %>
+      <header class="demo-header">
+        <div class="demo-header__inner">
+          <%= link_to "Agent Annotator Demo", root_path, class: "demo-brand" %>
+          <nav class="demo-nav">
+            <%= link_to "Marketing", root_path %>
+            <%= link_to "Blog", blog_posts_path %>
+            <%= link_to "Projects", projects_path %>
+            <%= link_to "UI Lab", "/ui_lab" %>
+            <%= link_to "Debug", "/rails_agent_annotator" %>
+          </nav>
+        </div>
+      </header>
 
-    <% if flash[:notice].present? %>
-      <p class="demo-flash"><%= flash[:notice] %></p>
+      <% if flash[:notice].present? %>
+        <p class="demo-flash"><%= flash[:notice] %></p>
+      <% end %>
     <% end %>
 
     <%= yield %>

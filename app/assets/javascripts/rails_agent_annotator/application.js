@@ -2,6 +2,31 @@
   const APP_ID = "raa-toolbar";
   const HIGHLIGHT_ID = "raa-highlight";
 
+  function toolbarMarkup(debugPath) {
+    return `
+      <div class="raa-toolbar-shell" id="${APP_ID}">
+        <div class="raa-toolbar-row">
+          <button class="raa-btn" type="button" data-action="toggle-select">Select: Off</button>
+          <button class="raa-btn" type="button" data-action="toggle-panel">Annotations</button>
+          <button class="raa-btn" type="button" data-action="copy">Copy Markdown</button>
+          <a class="raa-btn" href="${debugPath}" target="_blank" rel="noopener noreferrer">Debug</a>
+          <button class="raa-btn raa-btn-danger" type="button" data-action="clear">Clear</button>
+        </div>
+        <div class="raa-copy-status" data-role="copy-status" aria-live="polite"></div>
+        <div class="raa-panel" data-role="panel" hidden>
+          <div data-role="annotations"></div>
+        </div>
+        <datalist id="raa-tag-suggestions">
+          <option value="bug"></option>
+          <option value="copy"></option>
+          <option value="layout"></option>
+          <option value="behavior"></option>
+          <option value="feature"></option>
+        </datalist>
+      </div>
+    `;
+  }
+
   function parseContext() {
     const node = document.getElementById("raa-context");
     if (!node) return null;
@@ -151,8 +176,8 @@
     return lines.join("\n").trim();
   }
 
-  function renderAnnotationList(state, onChange) {
-    const list = document.getElementById("raa-annotations");
+  function renderAnnotationList(state, onChange, list) {
+    if (!list) return;
     list.innerHTML = "";
 
     state.annotations.forEach((annotation) => {
@@ -225,28 +250,9 @@
   function createUI(state, debugPath) {
     if (document.getElementById(APP_ID)) return null;
 
-    const toolbar = document.createElement("div");
-    toolbar.id = APP_ID;
-    toolbar.innerHTML = `
-      <div class="raa-toolbar-row">
-        <button class="raa-btn" type="button" data-action="toggle-select">Select: Off</button>
-        <button class="raa-btn" type="button" data-action="toggle-panel">Annotations</button>
-        <button class="raa-btn" type="button" data-action="copy">Copy Markdown</button>
-        <a class="raa-btn" href="${debugPath}" target="_blank" rel="noopener noreferrer">Debug</a>
-        <button class="raa-btn raa-btn-danger" type="button" data-action="clear">Clear</button>
-      </div>
-      <div id="raa-copy-status" aria-live="polite"></div>
-      <div id="raa-panel" hidden>
-        <div id="raa-annotations"></div>
-      </div>
-      <datalist id="raa-tag-suggestions">
-        <option value="bug"></option>
-        <option value="copy"></option>
-        <option value="layout"></option>
-        <option value="behavior"></option>
-        <option value="feature"></option>
-      </datalist>
-    `;
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = toolbarMarkup(debugPath);
+    const toolbar = wrapper.firstElementChild;
 
     const highlight = document.createElement("div");
     highlight.id = HIGHLIGHT_ID;
@@ -464,12 +470,13 @@
     const panelButton = ui.toolbar.querySelector('[data-action="toggle-panel"]');
     const copyButton = ui.toolbar.querySelector('[data-action="copy"]');
     const clearButton = ui.toolbar.querySelector('[data-action="clear"]');
-    const panel = ui.toolbar.querySelector("#raa-panel");
-    const copyStatus = ui.toolbar.querySelector("#raa-copy-status");
+    const panel = ui.toolbar.querySelector('[data-role="panel"]');
+    const copyStatus = ui.toolbar.querySelector('[data-role="copy-status"]');
+    const annotationsRoot = ui.toolbar.querySelector('[data-role="annotations"]');
 
     const persist = () => {
       window.localStorage.setItem(storageKey, JSON.stringify(state.annotations));
-      renderAnnotationList(state, persist);
+      renderAnnotationList(state, persist, annotationsRoot);
     };
 
     const updateSelectButton = () => {
@@ -547,7 +554,8 @@
     document.addEventListener("click", onClick, true);
 
     updateSelectButton();
-    renderAnnotationList(state, persist);
+    panel.hidden = !state.panelOpen;
+    renderAnnotationList(state, persist, annotationsRoot);
   }
 
   document.addEventListener("turbo:load", initAnnotator);

@@ -42,13 +42,13 @@
   color: #991b1b;
 }
 
-#raa-copy-status {
+.raa-copy-status {
   min-height: 18px;
   margin-top: 6px;
   color: #065f46;
 }
 
-#raa-panel {
+.raa-panel {
   margin-top: 8px;
   max-height: 320px;
   overflow: auto;
