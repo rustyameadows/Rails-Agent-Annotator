@@ -26,8 +26,10 @@ class NavigationTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_includes response.body, "rails_agent_annotator Debug"
+    assert_includes response.body, "rails_agent_annotator/application.js"
     assert_includes response.body, "raa-debug-minimap"
     assert_includes response.body, "raa-debug-diagnostics"
     assert_includes response.body, "raa-debug-notes"
+    assert_includes response.body, "Loading storage diagnostics..."
   end
 end

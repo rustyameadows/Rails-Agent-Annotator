@@ -222,7 +222,7 @@
     });
   }
 
-  function createUI(state) {
+  function createUI(state, debugPath) {
     if (document.getElementById(APP_ID)) return null;
 
     const toolbar = document.createElement("div");
@@ -232,6 +232,7 @@
         <button class="raa-btn" type="button" data-action="toggle-select">Select: Off</button>
         <button class="raa-btn" type="button" data-action="toggle-panel">Annotations</button>
         <button class="raa-btn" type="button" data-action="copy">Copy Markdown</button>
+        <a class="raa-btn" href="${debugPath}" target="_blank" rel="noopener noreferrer">Debug</a>
         <button class="raa-btn raa-btn-danger" type="button" data-action="clear">Clear</button>
       </div>
       <div id="raa-copy-status" aria-live="polite"></div>
@@ -432,15 +433,17 @@
   }
 
   function initAnnotator() {
+    const context = parseContext() || {};
+    const storageKeyPrefix = context.storage_key_prefix || "rails_agent_annotator";
+    const debugPath = context.mount_path || "/rails_agent_annotator";
+    renderDebugNotesDashboard(storageKeyPrefix);
+    renderStorageDiagnostics(storageKeyPrefix);
+
     if (!document.getElementById("raa-root")) return;
 
     document.querySelectorAll("#" + APP_ID + ", #" + HIGHLIGHT_ID).forEach((node) => node.remove());
 
-    const context = parseContext() || {};
-    const storageKeyPrefix = context.storage_key_prefix || "rails_agent_annotator";
     const storageKey = `${storageKeyPrefix}:${window.location.pathname}`;
-    renderDebugNotesDashboard(storageKeyPrefix);
-    renderStorageDiagnostics(storageKeyPrefix);
 
     const state = {
       selectMode: false,
@@ -454,7 +457,7 @@
       state.annotations = [];
     }
 
-    const ui = createUI(state);
+    const ui = createUI(state, debugPath);
     if (!ui) return;
 
     const selectButton = ui.toolbar.querySelector('[data-action="toggle-select"]');

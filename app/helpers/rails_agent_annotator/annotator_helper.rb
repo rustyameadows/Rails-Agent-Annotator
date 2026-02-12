@@ -8,7 +8,8 @@ module RailsAgentAnnotator
 
     def annotator_context_payload
       context = RailsAgentAnnotator.context_for(controller).merge(
-        storage_key_prefix: RailsAgentAnnotator.configuration.storage_key_prefix
+        storage_key_prefix: RailsAgentAnnotator.configuration.storage_key_prefix,
+        mount_path: RailsAgentAnnotator.configuration.mount_path
       )
 
       ERB::Util.json_escape(context.to_json)

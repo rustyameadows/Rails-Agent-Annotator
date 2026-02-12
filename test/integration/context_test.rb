@@ -18,6 +18,7 @@ class ContextTest < ActionDispatch::IntegrationTest
     assert_equal "pages#home", payload["controller"]
     assert_equal "root", payload["route"]
     assert_equal "rails_agent_annotator", payload["storage_key_prefix"]
+    assert_equal "/__agent_annotator", payload["mount_path"]
     assert payload["timestamp"].present?
   end
 

@@ -3,7 +3,7 @@
   right: 16px;
   bottom: 16px;
   z-index: 2147483646;
-  width: min(440px, calc(100vw - 24px));
+  width: min(560px, calc(100vw - 24px));
   border: 1px solid #1f2937;
   border-radius: 12px;
   background: #ffffff;
@@ -19,15 +19,18 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  align-items: center;
 }
 
 .raa-btn {
+  display: inline-block;
   border: 1px solid #1f2937;
   border-radius: 8px;
   background: #f9fafb;
   color: #111827;
   padding: 6px 10px;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .raa-btn-active {
