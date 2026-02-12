@@ -282,6 +282,77 @@
     return sessions;
   }
 
+  function collectStorageDiagnostics(storageKeyPrefix) {
+    const prefix = `${storageKeyPrefix}:`;
+    const matched = [];
+    let parseErrors = 0;
+    let emptyArrays = 0;
+
+    for (let i = 0; i < window.localStorage.length; i += 1) {
+      const key = window.localStorage.key(i);
+      if (!key || !key.startsWith(prefix)) continue;
+
+      const rawValue = window.localStorage.getItem(key);
+      let noteCount = null;
+      let parseOk = false;
+
+      try {
+        const parsed = JSON.parse(rawValue || "[]");
+        parseOk = Array.isArray(parsed);
+        noteCount = Array.isArray(parsed) ? parsed.length : null;
+        if (noteCount === 0) emptyArrays += 1;
+      } catch (_error) {
+        parseErrors += 1;
+      }
+
+      matched.push({ key, parseOk, noteCount });
+    }
+
+    matched.sort((a, b) => a.key.localeCompare(b.key));
+
+    return {
+      origin: window.location.origin,
+      prefix,
+      totalLocalStorageKeys: window.localStorage.length,
+      matchedKeyCount: matched.length,
+      emptyArrays,
+      parseErrors,
+      matched
+    };
+  }
+
+  function renderStorageDiagnostics(storageKeyPrefix) {
+    const root = document.getElementById("raa-debug-diagnostics");
+    if (!root) return;
+
+    const data = collectStorageDiagnostics(storageKeyPrefix);
+    root.innerHTML = "";
+
+    const summary = document.createElement("div");
+    summary.className = "raa-debug-muted";
+    summary.innerHTML = `
+      <div>Origin: <code>${data.origin}</code></div>
+      <div>Prefix: <code>${data.prefix}</code></div>
+      <div>localStorage keys: ${data.totalLocalStorageKeys}</div>
+      <div>Matched keys: ${data.matchedKeyCount}</div>
+      <div>Matched empty arrays: ${data.emptyArrays}</div>
+      <div>Parse errors: ${data.parseErrors}</div>
+    `;
+    root.appendChild(summary);
+
+    if (!data.matched.length) return;
+
+    const list = document.createElement("ul");
+    list.className = "raa-debug-key-list";
+    data.matched.forEach((entry) => {
+      const item = document.createElement("li");
+      const countLabel = entry.noteCount === null ? "unknown" : String(entry.noteCount);
+      item.textContent = `${entry.key} | parse:${entry.parseOk ? "ok" : "fail"} | notes:${countLabel}`;
+      list.appendChild(item);
+    });
+    root.appendChild(list);
+  }
+
   function renderDebugNotesDashboard(storageKeyPrefix) {
     const minimap = document.getElementById("raa-debug-minimap");
     const notesRoot = document.getElementById("raa-debug-notes");
@@ -369,6 +440,7 @@
     const storageKeyPrefix = context.storage_key_prefix || "rails_agent_annotator";
     const storageKey = `${storageKeyPrefix}:${window.location.pathname}`;
     renderDebugNotesDashboard(storageKeyPrefix);
+    renderStorageDiagnostics(storageKeyPrefix);
 
     const state = {
       selectMode: false,
