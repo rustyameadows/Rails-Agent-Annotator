@@ -1,13 +1,7 @@
 source "https://rubygems.org"
 
-# Specify your gem's dependencies in rails_agent_annotator.gemspec.
 gemspec
 
+gem "sqlite3", ">= 1.6"
 gem "puma"
-
-gem "sqlite3"
-
 gem "propshaft"
-
-# Start debugger with binding.b [https://github.com/ruby/debug]
-# gem "debug", ">= 1.0.0"
