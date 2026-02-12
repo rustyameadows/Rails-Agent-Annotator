@@ -257,6 +257,109 @@
     return { toolbar, highlight };
   }
 
+  function loadAllStoredSessions(storageKeyPrefix) {
+    const prefix = `${storageKeyPrefix}:`;
+    const sessions = [];
+
+    for (let i = 0; i < window.localStorage.length; i += 1) {
+      const key = window.localStorage.key(i);
+      if (!key || !key.startsWith(prefix)) continue;
+
+      const routePath = key.slice(prefix.length) || "/";
+
+      try {
+        const raw = JSON.parse(window.localStorage.getItem(key) || "[]");
+        const annotations = Array.isArray(raw) ? raw : [];
+
+        if (!annotations.length) continue;
+        sessions.push({ key, routePath, annotations });
+      } catch (_error) {
+        // Ignore malformed values.
+      }
+    }
+
+    sessions.sort((a, b) => a.routePath.localeCompare(b.routePath));
+    return sessions;
+  }
+
+  function renderDebugNotesDashboard(storageKeyPrefix) {
+    const minimap = document.getElementById("raa-debug-minimap");
+    const notesRoot = document.getElementById("raa-debug-notes");
+    if (!minimap || !notesRoot) return;
+
+    const sessions = loadAllStoredSessions(storageKeyPrefix);
+    minimap.innerHTML = "";
+    notesRoot.innerHTML = "";
+
+    if (!sessions.length) {
+      minimap.innerHTML = "<p class=\"raa-debug-muted\">No stored annotations found.</p>";
+      notesRoot.innerHTML = "<p class=\"raa-debug-muted\">Create annotations on any page, then refresh this screen.</p>";
+      return;
+    }
+
+    const summary = document.createElement("p");
+    summary.className = "raa-debug-muted";
+    const totalNotes = sessions.reduce((sum, session) => sum + session.annotations.length, 0);
+    summary.textContent = `${sessions.length} routes, ${totalNotes} total annotations`;
+    minimap.appendChild(summary);
+
+    const chips = document.createElement("div");
+    chips.className = "raa-debug-chip-grid";
+    sessions.forEach((session) => {
+      const chip = document.createElement("a");
+      chip.className = "raa-debug-chip";
+      chip.href = `#raa-route-${encodeURIComponent(session.routePath)}`;
+      chip.textContent = `${session.routePath} (${session.annotations.length})`;
+      chips.appendChild(chip);
+    });
+    minimap.appendChild(chips);
+
+    sessions.forEach((session) => {
+      const section = document.createElement("section");
+      section.className = "raa-debug-session";
+      section.id = `raa-route-${encodeURIComponent(session.routePath)}`;
+
+      const title = document.createElement("h3");
+      title.textContent = session.routePath;
+      section.appendChild(title);
+
+      const list = document.createElement("ol");
+      list.className = "raa-debug-list";
+
+      session.annotations.forEach((annotation) => {
+        const item = document.createElement("li");
+        const tag = annotation.tag || "unlabeled";
+        const priority = annotation.priority || "P2";
+        const selector = annotation.selector || "Unknown";
+        const noteText = annotation.notes && annotation.notes.trim() ? annotation.notes.trim() : "(no notes)";
+
+        const label = document.createElement("strong");
+        label.textContent = `[${tag}] [${priority}]`;
+
+        const selectorRow = document.createElement("div");
+        selectorRow.textContent = "Selector: ";
+        const selectorCode = document.createElement("code");
+        selectorCode.textContent = selector;
+        selectorRow.appendChild(selectorCode);
+
+        const textRow = document.createElement("div");
+        textRow.textContent = `Text: ${annotation.text || "(input)"}`;
+
+        const notesRow = document.createElement("div");
+        notesRow.textContent = `Notes: ${noteText.replace(/\n/g, " | ")}`;
+
+        item.appendChild(label);
+        item.appendChild(selectorRow);
+        item.appendChild(textRow);
+        item.appendChild(notesRow);
+        list.appendChild(item);
+      });
+
+      section.appendChild(list);
+      notesRoot.appendChild(section);
+    });
+  }
+
   function initAnnotator() {
     if (!document.getElementById("raa-root")) return;
 
@@ -265,6 +368,7 @@
     const context = parseContext() || {};
     const storageKeyPrefix = context.storage_key_prefix || "rails_agent_annotator";
     const storageKey = `${storageKeyPrefix}:${window.location.pathname}`;
+    renderDebugNotesDashboard(storageKeyPrefix);
 
     const state = {
       selectMode: false,

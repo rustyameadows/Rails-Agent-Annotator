@@ -1,3 +1,20 @@
-<h1>rails_agent_annotator Debug</h1>
-<p>Enabled: <%= @enabled %></p>
-<pre><%= JSON.pretty_generate(@context) %></pre>
+<main class="raa-debug">
+  <h1>rails_agent_annotator Debug</h1>
+  <p>Enabled: <%= @enabled %></p>
+
+  <section class="raa-debug-card">
+    <h2>Request Context</h2>
+    <pre><%= JSON.pretty_generate(@context) %></pre>
+  </section>
+
+  <section class="raa-debug-card">
+    <h2>Stored Notes Mini Map</h2>
+    <p class="raa-debug-muted">Grouped by route path from local browser storage.</p>
+    <div id="raa-debug-minimap"></div>
+  </section>
+
+  <section class="raa-debug-card">
+    <h2>All Stored Notes</h2>
+    <div id="raa-debug-notes"></div>
+  </section>
+</main>
