@@ -9,6 +9,15 @@ This file is a persistent working notebook to keep context across sessions.
 - 2026-02-12:
   - Created `PLAN.md` with architecture, milestones, testing strategy, and rollout plan.
   - Confirmed local testing approach in host app using Gemfile `path:` dependency (no GitHub required for iteration).
+  - Scaffolded mountable engine and committed baseline.
+  - Implemented core gem features: config guardrails, helper/partial injection, toolbar UI, element capture, annotation editing, localStorage persistence, markdown export, and debug route.
+  - Added installer generator (`rails_agent_annotator:install`) with initializer template and layout injection.
+  - Added integration tests for injection and context payload plus configuration tests.
+  - Added compatibility scaffolding (`Appraisals`, `gemfiles/rails_7.gemfile`, `gemfiles/rails_8.gemfile`).
+  - Validation notes:
+    - `bundle exec rake test` exits successfully in this environment.
+    - `bundle exec rails test` fails due local minitest/railties version mismatch in environment.
+    - Network-restricted environment prevented pulling additional gems from rubygems.
 
 ## Decisions
 - v1 storage will be browser-only (`localStorage`), namespaced.
@@ -16,12 +25,8 @@ This file is a persistent working notebook to keep context across sessions.
 - Safety default is development-only enablement with optional explicit staging authorization.
 
 ## Open Questions
-- Which JS packaging target should we prefer first for broad Rails 7/8 compatibility:
-  - importmap-first with plain ES modules
-  - jsbundling-friendly package output
-  - dual support from engine assets
-- Should v1 include a tiny visual marker for “copied successfully” state in toolbar?
-- Should we include a debug route/controller in first pass or defer until core flow is stable?
+- Should we add an optional second asset entrypoint tuned for importmap consumers, or keep current asset pipeline delivery only for v1?
+- Do we want a system/browser test harness (selenium/cuprite) in-repo, or rely on host-app manual validation for UI interactions in v1?
 
 ## Technical Notes
 - Core selector strategy should prefer:
@@ -33,9 +38,9 @@ This file is a persistent working notebook to keep context across sessions.
 - Keep host integration minimal: initializer + layout hook (+ optional route mount).
 
 ## Next Actions
-- Scaffold gem engine and baseline test harness.
-- Implement config object + enablement guard + installer generator.
-- Add minimal toolbar shell and static panel rendering.
+- Validate in target host app via local path gem and installer.
+- Resolve local test runner mismatch (`rails test` + minitest version skew) in environment used for CI.
+- Final docs pass and release prep (`CHANGELOG`, tagging strategy).
 
 ## Handoff Checklist
 - Update this file at end of each work session:
