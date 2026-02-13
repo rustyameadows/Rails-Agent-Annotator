@@ -22,6 +22,16 @@
   z-index: 2147483646;
 }
 
+#raa-launcher.raa-launcher-has-annotations {
+  background: #dbeafe;
+  border-color: #2563eb;
+  color: #1d4ed8;
+}
+
+#raa-launcher.raa-launcher-has-annotations:hover {
+  background: #bfdbfe;
+}
+
 .raa-toast {
   position: absolute;
   right: 0;

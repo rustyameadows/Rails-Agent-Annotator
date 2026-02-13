@@ -523,6 +523,7 @@
     const persist = () => {
       window.localStorage.setItem(storageKey, JSON.stringify(state.annotations));
       renderAnnotationList(state, persist, annotationsRoot);
+      updateLauncherState();
     };
 
     const updateSelectButton = () => {
@@ -530,13 +531,20 @@
       selectButton.setAttribute("aria-pressed", state.selectMode ? "true" : "false");
     };
 
-    const setToolbarVisible = (visible) => {
+    const updateLauncherState = () => {
+      const count = state.annotations.length;
+      ui.launcher.textContent = count > 0 ? `Agent Annotation (${count})` : "Agent Annotation";
+      ui.launcher.classList.toggle("raa-launcher-has-annotations", count > 0);
+    };
+
+    const setToolbarVisible = (visible, options = {}) => {
+      const activateSelect = options.activateSelect === true;
       ui.toolbar.hidden = !visible;
       ui.launcher.hidden = visible;
       window.localStorage.setItem(visibilityPreferenceKey, visible ? "1" : "0");
 
       if (visible) {
-        state.selectMode = true;
+        state.selectMode = activateSelect;
         updateSelectButton();
       } else {
         state.selectMode = false;
@@ -569,6 +577,9 @@
 
       const captured = captureElement(event.target);
       state.annotations.unshift(captured);
+      state.selectMode = false;
+      updateSelectButton();
+      ui.highlight.style.display = "none";
       persist();
       window.requestAnimationFrame(() => focusAnnotationNotes(annotationsRoot, captured.id));
     };
@@ -614,7 +625,7 @@
     });
 
     ui.launcher.addEventListener("click", () => {
-      setToolbarVisible(true);
+      setToolbarVisible(true, { activateSelect: true });
     });
 
     clearButton.addEventListener("click", () => {
@@ -636,11 +647,14 @@
     document.addEventListener("keydown", onKeyDown, true);
 
     updateSelectButton();
+    updateLauncherState();
     renderAnnotationList(state, persist, annotationsRoot);
 
     const savedVisibility = window.localStorage.getItem(visibilityPreferenceKey);
     const toolbarVisible = savedVisibility === "1";
-    setToolbarVisible(toolbarVisible);
+    state.selectMode = false;
+    updateSelectButton();
+    setToolbarVisible(toolbarVisible, { activateSelect: false });
   }
 
   document.addEventListener("turbo:load", initAnnotator);
