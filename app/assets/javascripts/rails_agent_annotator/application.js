@@ -138,8 +138,10 @@
 
   function markdownFor(context, annotations) {
     const lines = [];
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
 
-    lines.push("Title: Annotator Notes", "", "Context:");
+    lines.push("Title: Annotator Notes", `**Viewport:** ${viewportWidth}×${viewportHeight}`, "", "Context:");
     lines.push(`- URL: ${context && context.url ? context.url : window.location.pathname}`);
     lines.push(`- Method: ${context && context.method ? context.method : "Unknown"}`);
     lines.push(`- Controller: ${context && context.controller ? context.controller : "Unknown"}`);
