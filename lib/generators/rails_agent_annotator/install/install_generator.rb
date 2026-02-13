@@ -21,10 +21,20 @@ module RailsAgentAnnotator
           return
         end
 
+        guard_start = "<% if defined?(RailsAgentAnnotator::AnnotatorHelper) %>"
         hook = "<%= rails_agent_annotator %>"
-        return if File.read(layout_path).include?(hook)
+        guard_end = "<% end %>"
+        guarded_hook = [guard_start, "  #{hook}", guard_end].join("\n")
 
-        inject_into_file layout_path, "\n    #{hook}\n", before: "</body>"
+        content = File.read(layout_path)
+        return if content.include?(guarded_hook)
+
+        if content.include?(hook)
+          gsub_file(layout_path, hook, guarded_hook)
+          return
+        end
+
+        inject_into_file layout_path, "\n    #{guarded_hook}\n", before: "</body>"
       end
 
       def mount_debug_route

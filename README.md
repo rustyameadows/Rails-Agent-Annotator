@@ -50,6 +50,13 @@ The installer generator:
 - optionally mounts engine route (if `--mount` is passed)
 
 If you skip generator, do these manually.
+When wiring layout manually (or for older installs), use a guard so production boots work when the gem is development-only:
+
+```erb
+<% if defined?(RailsAgentAnnotator::AnnotatorHelper) %>
+  <%= rails_agent_annotator %>
+<% end %>
+```
 
 ## Configuration
 
