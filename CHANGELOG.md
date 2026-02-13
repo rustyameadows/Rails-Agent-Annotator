@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Guard generated initializer with `defined?(RailsAgentAnnotator)` so production boot and `assets:precompile` do not fail when gem is installed only in development.
 
 ## 0.1.1 - 2026-02-12
 - Added app-scoped storage isolation (`app_id`) to prevent annotation collisions across different local Rails apps on the same host/port.

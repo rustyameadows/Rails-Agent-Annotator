@@ -69,6 +69,16 @@ RailsAgentAnnotator.configure do |config|
 end
 ```
 
+If your app installs this gem only in `development`, wrap the initializer so non-development boots (for example `assets:precompile` in production) do not raise `NameError`:
+
+```ruby
+if defined?(RailsAgentAnnotator)
+  RailsAgentAnnotator.configure do |config|
+    # ...
+  end
+end
+```
+
 ## Safety Defaults
 
 - Disabled outside configured environments
