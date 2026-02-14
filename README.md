@@ -12,7 +12,9 @@ It adds a lightweight in-browser annotation toolbar that lets you:
 
 v1 implementation includes:
 - Dev toolbar overlay
-- Element capture (selector/tag/id/classes/text/bounds/turbo frame/stimulus)
+- Element capture (selector/tag/id/classes/text/bounds/turbo frame/stimulus/rough CSS impact)
+- Live CSS edits with in-page preview and markdown diff export
+- CSS scope controls for edits (`This item only`, `Similar siblings`, `Entire container`) with live match counts
 - Annotation panel with edit/delete
 - `localStorage` session persistence
 - Rails context injection in export (URL/method/controller/route/timestamp)
@@ -98,8 +100,10 @@ end
 1. Open a page with the toolbar enabled.
 2. Toggle `Select: On`.
 3. Hover and click an element to capture it.
-4. Add note/tag/priority in the panel.
-5. Click `Copy Markdown` and paste into your coding agent.
+4. Choose CSS scope (`This item only`, `Similar siblings`, or `Entire container`) based on intent.
+5. Adjust CSS values in `CSS Edits` (for example `border-radius: 20px -> 8px`) and preview changes live.
+6. Add note/tag/priority in the panel.
+7. Click `Copy Markdown` and paste into your coding agent.
 
 ## Demo Surface (dummy app)
 
@@ -114,7 +118,7 @@ These routes are designed as a richer annotation playground with cards, tables, 
 ## Example Markdown Output
 
 ```text
-Title: Annotator Notes
+Annotator Notes
 
 Context:
 - URL: /projects/12/edit
@@ -125,11 +129,12 @@ Context:
 
 Annotations:
 1) [layout] [P1]
-- Selector: .sidebar .btn.btn-primary
+- Selector (Exact): .sidebar > .btn.btn-primary:nth-of-type(1)
 - Text: Save
-- Element: button
-- Turbo Frame: project_form
-- Stimulus: form autosave
+- CSS Scope Selector: .sidebar > .btn.btn-primary
+- CSS Edits:
+  - border-radius: 20px -> 8px
+  - padding: 16px -> 12px
 - Notes:
   - Increase padding to ~16px and reduce icon/text crowding.
 ```

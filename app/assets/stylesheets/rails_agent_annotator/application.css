@@ -110,6 +110,121 @@
   margin-bottom: 6px;
 }
 
+.raa-item-css {
+  margin: 0 0 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+}
+
+.raa-item-css summary {
+  cursor: pointer;
+  padding: 6px 8px;
+  font-weight: 700;
+}
+
+.raa-item-css-pre {
+  margin: 0;
+  padding: 0 8px 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #374151;
+}
+
+.raa-css-editor {
+  margin: 0 0 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 8px;
+}
+
+.raa-css-editor-header {
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.raa-css-editor-hint {
+  color: #4b5563;
+  margin-bottom: 6px;
+}
+
+.raa-css-scope {
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  padding: 6px;
+  background: #ffffff;
+  margin-bottom: 6px;
+}
+
+.raa-css-scope-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.raa-css-scope-label {
+  color: #374151;
+  font-weight: 700;
+}
+
+.raa-css-scope-meta {
+  color: #4b5563;
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+
+.raa-css-editor-rows {
+  display: grid;
+  gap: 6px;
+}
+
+.raa-css-editor-empty {
+  color: #6b7280;
+  font-style: italic;
+}
+
+.raa-css-edit-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  padding: 6px;
+}
+
+.raa-css-edit-row input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+}
+
+.raa-css-edit-row-disabled {
+  opacity: 0.62;
+}
+
+.raa-css-edit-row-invalid {
+  border-color: #b45309;
+  background: #fffbeb;
+}
+
+.raa-css-edit-baseline {
+  grid-column: 1 / -1;
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.raa-css-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
 .raa-item-controls {
   display: grid;
   grid-template-columns: 1fr 90px;
@@ -154,6 +269,10 @@
     right: 12px;
     width: auto;
     bottom: 12px;
+  }
+
+  .raa-css-edit-row {
+    grid-template-columns: 18px minmax(0, 1fr);
   }
 }
 
