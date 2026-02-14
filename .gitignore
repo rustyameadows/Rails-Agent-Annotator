@@ -3,6 +3,7 @@
 /tmp
 /.idea
 /.vscode
+*.gem
 
 # Local runtime artifacts
 Gemfile.lock
