@@ -13,9 +13,12 @@ It adds a lightweight in-browser annotation toolbar that lets you:
 v1 implementation includes:
 - Dev toolbar overlay
 - Element capture (selector/tag/id/classes/text/bounds/turbo frame/stimulus/rough CSS impact)
+- Stacked, collapsible annotation list with per-selection controls
+- Left-side auxiliary editor panel for CSS and text rewrites
 - Live CSS edits with in-page preview and markdown diff export
+- Live text rewrite (text/value only) with markdown diff export
 - CSS scope controls for edits (`This item only`, `Similar siblings`, `Entire container`) with live match counts
-- Annotation panel with edit/delete
+- Annotation notes/tag/priority edit/delete controls
 - `localStorage` session persistence
 - Rails context injection in export (URL/method/controller/route/timestamp)
 - Turbo-safe initialization (`turbo:load`)
@@ -98,12 +101,13 @@ end
 ## Usage
 
 1. Open a page with the toolbar enabled.
-2. Toggle `Select: On`.
+2. Click `New Selection`.
 3. Hover and click an element to capture it.
-4. Choose CSS scope (`This item only`, `Similar siblings`, or `Entire container`) based on intent.
-5. Adjust CSS values in `CSS Edits` (for example `border-radius: 20px -> 8px`) and preview changes live.
-6. Add note/tag/priority in the panel.
-7. Click `Copy Markdown` and paste into your coding agent.
+4. Expand/collapse selections in the stacked list as needed.
+5. Click `Edit CSS` to open the left editor panel, choose scope, and adjust CSS values with live preview.
+6. Click `Edit Text` to rewrite supported text/value content live.
+7. Add note/tag/priority in the selection card.
+8. Click `Copy MD` and paste into your coding agent.
 
 ## Demo Surface (dummy app)
 
@@ -135,6 +139,7 @@ Annotations:
 - CSS Edits:
   - border-radius: 20px -> 8px
   - padding: 16px -> 12px
+- Text Edit: Save -> Save changes
 - Notes:
   - Increase padding to ~16px and reduce icon/text crowding.
 ```
