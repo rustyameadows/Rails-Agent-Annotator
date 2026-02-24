@@ -16,6 +16,7 @@ v1 implementation includes:
 - Stacked, collapsible annotation list with per-selection controls
 - Left-side auxiliary editor panel for CSS and text rewrites
 - Live CSS edits with in-page preview and markdown diff export
+- Visual color popover (preview swatch, 2D field, 4 live sliders) with format-locked editing for `hex`, `rgb(a)`, `hsl(a)`, and `oklch(...)`
 - Live text rewrite (text/value only) with markdown diff export
 - Bundled Geist Pixel Square for the toolbar title and annotator buttons
 - CSS scope controls for edits (`This item only`, `Similar siblings`, `Entire container`) with live match counts
@@ -106,6 +107,9 @@ end
 3. Hover and click an element to capture it.
 4. Expand/collapse selections in the stacked list as needed.
 5. Click `Edit CSS` to open the left editor panel, choose scope, and adjust CSS values with live preview.
+   Color picker note: use `Tune` on eligible color rows to open the visual popover (preview, field, and sliders).
+   Editing is format-locked to the detected source value (`hex`, `rgb(a)`, `hsl(a)`, `oklch(...)`) with no format switcher.
+   Unsupported color syntaxes stay text-editable and simply disable visual tuning.
 6. Click `Edit Text` to rewrite supported text/value content live.
 7. Add note/tag/priority in the selection card.
 8. Click `Copy MD` and paste into your coding agent.

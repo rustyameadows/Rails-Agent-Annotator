@@ -118,6 +118,7 @@
   ];
   const DEFAULT_CSS_EDIT_PROPERTIES = [
     "border",
+    "border-color",
     "border-top",
     "border-right",
     "border-bottom",
@@ -140,7 +141,9 @@
   const COLOR_FORMAT_HEX = "hex";
   const COLOR_FORMAT_RGB = "rgb";
   const COLOR_FORMAT_HSL = "hsl";
-  const COLOR_FORMAT_VALUES = new Set([COLOR_FORMAT_HEX, COLOR_FORMAT_RGB, COLOR_FORMAT_HSL]);
+  const COLOR_FORMAT_OKLCH = "oklch";
+  const COLOR_FORMAT_VALUES = new Set([COLOR_FORMAT_HEX, COLOR_FORMAT_RGB, COLOR_FORMAT_HSL, COLOR_FORMAT_OKLCH]);
+  const OKLCH_DISPLAY_CHROMA_CAP = 0.4;
   const COLOR_PICKER_PROPERTIES = new Set([
     "color",
     "background-color",
@@ -557,7 +560,52 @@
     return includeAlpha ? `${base}${alphaToHex(rgba.a)}` : base;
   }
 
-  function rgbToHsl(r, g, b) {
+  function normalizedHueDegrees(value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return 0;
+    let normalized = numeric % 360;
+    if (normalized < 0) normalized += 360;
+    if (Math.abs(normalized - 360) < 0.000001) normalized = 0;
+    return normalized;
+  }
+
+  function parseNumericUnitToken(rawToken) {
+    const token = (rawToken || "").toString().trim().toLowerCase();
+    if (!token) return null;
+    const match = token.match(/^([+-]?(?:\d+\.?\d*|\.\d+))(deg|rad|turn|%)?$/);
+    if (!match) return null;
+
+    const value = Number(match[1]);
+    if (!Number.isFinite(value)) return null;
+
+    return {
+      value,
+      unit: match[2] || ""
+    };
+  }
+
+  function parseAlphaToken(rawToken) {
+    const parsed = parseNumericUnitToken(rawToken);
+    if (!parsed) return null;
+    if (parsed.unit && parsed.unit !== "%") return null;
+    if (parsed.unit === "%") return roundedAlpha(parsed.value / 100);
+    return roundedAlpha(parsed.value);
+  }
+
+  function srgbChannelToLinear(value) {
+    const normalized = clampNumber(value, 0, 1);
+    if (normalized <= 0.04045) return normalized / 12.92;
+    return ((normalized + 0.055) / 1.055) ** 2.4;
+  }
+
+  function linearChannelToSrgb(value) {
+    const normalized = Number(value);
+    if (!Number.isFinite(normalized)) return 0;
+    if (normalized <= 0.0031308) return 12.92 * normalized;
+    return (1.055 * (normalized ** (1 / 2.4))) - 0.055;
+  }
+
+  function rgbToHslColor(r, g, b, alpha = 1) {
     const rn = clampNumber(r, 0, 255) / 255;
     const gn = clampNumber(g, 0, 255) / 255;
     const bn = clampNumber(b, 0, 255) / 255;
@@ -573,14 +621,75 @@
       if (max === rn) hue = ((gn - bn) / delta) % 6;
       else if (max === gn) hue = ((bn - rn) / delta) + 2;
       else hue = ((rn - gn) / delta) + 4;
-      hue = Math.round(hue * 60);
+      hue *= 60;
       if (hue < 0) hue += 360;
     }
 
     return {
-      h: hue,
-      s: Math.round(saturation * 100),
-      l: Math.round(lightness * 100)
+      h: normalizedHueDegrees(hue),
+      s: clampNumber(saturation * 100, 0, 100),
+      l: clampNumber(lightness * 100, 0, 100),
+      a: roundedAlpha(alpha)
+    };
+  }
+
+  function hslToRgbChannels(h, s, l) {
+    const hue = normalizedHueDegrees(h);
+    const saturation = clampNumber(s, 0, 100) / 100;
+    const lightness = clampNumber(l, 0, 100) / 100;
+    const chroma = (1 - Math.abs((2 * lightness) - 1)) * saturation;
+    const huePrime = hue / 60;
+    const x = chroma * (1 - Math.abs((huePrime % 2) - 1));
+    let rPrime = 0;
+    let gPrime = 0;
+    let bPrime = 0;
+
+    if (huePrime >= 0 && huePrime < 1) {
+      rPrime = chroma;
+      gPrime = x;
+    } else if (huePrime >= 1 && huePrime < 2) {
+      rPrime = x;
+      gPrime = chroma;
+    } else if (huePrime >= 2 && huePrime < 3) {
+      gPrime = chroma;
+      bPrime = x;
+    } else if (huePrime >= 3 && huePrime < 4) {
+      gPrime = x;
+      bPrime = chroma;
+    } else if (huePrime >= 4 && huePrime < 5) {
+      rPrime = x;
+      bPrime = chroma;
+    } else {
+      rPrime = chroma;
+      bPrime = x;
+    }
+
+    const match = lightness - (chroma / 2);
+    return {
+      r: clampNumber((rPrime + match) * 255, 0, 255),
+      g: clampNumber((gPrime + match) * 255, 0, 255),
+      b: clampNumber((bPrime + match) * 255, 0, 255)
+    };
+  }
+
+  function hslColorToRgba(hsl) {
+    if (!hsl || typeof hsl !== "object") return null;
+    const alpha = roundedAlpha(hsl.a);
+    const channels = hslToRgbChannels(hsl.h, hsl.s, hsl.l);
+    return {
+      ...channels,
+      a: alpha
+    };
+  }
+
+  function normalizeHslControlModel(model) {
+    if (!model || typeof model !== "object") return null;
+    return {
+      kind: "hsl",
+      h: normalizedHueDegrees(model.h),
+      s: clampNumber(model.s, 0, 100),
+      l: clampNumber(model.l, 0, 100),
+      a: roundedAlpha(model.a)
     };
   }
 
@@ -595,33 +704,470 @@
     return `rgb(${r}, ${g}, ${b})`;
   }
 
-  function rgbaToHslString(rgba) {
-    if (!rgba) return "hsl(0, 0%, 0%)";
-    const { h, s, l } = rgbToHsl(rgba.r, rgba.g, rgba.b);
-    const a = roundedAlpha(rgba.a);
+  function hslColorToCssString(hsl) {
+    const normalized = normalizeHslControlModel(hsl);
+    if (!normalized) return "hsl(0, 0%, 0%)";
 
-    if (a < 1) return `hsla(${h}, ${s}%, ${l}%, ${trimNumericString(a)})`;
+    const h = trimNumericString(normalized.h, 2);
+    const s = trimNumericString(normalized.s, 2);
+    const l = trimNumericString(normalized.l, 2);
+    if (normalized.a < 1) return `hsla(${h}, ${s}%, ${l}%, ${trimNumericString(normalized.a)})`;
     return `hsl(${h}, ${s}%, ${l}%)`;
   }
 
+  function rgbaToHslString(rgba) {
+    if (!rgba) return "hsl(0, 0%, 0%)";
+    return hslColorToCssString(rgbToHslColor(rgba.r, rgba.g, rgba.b, rgba.a));
+  }
+
+  function parseHueToken(rawToken) {
+    const parsed = parseNumericUnitToken(rawToken);
+    if (!parsed) return null;
+    if (parsed.unit === "%") return null;
+    if (parsed.unit === "rad") return normalizedHueDegrees(parsed.value * (180 / Math.PI));
+    if (parsed.unit === "turn") return normalizedHueDegrees(parsed.value * 360);
+    return normalizedHueDegrees(parsed.value);
+  }
+
+  function parseRgbChannelToken(rawToken) {
+    const token = (rawToken || "").toString().trim();
+    if (!token) return null;
+    if (token.endsWith("%")) {
+      const numeric = Number(token.slice(0, -1));
+      if (!Number.isFinite(numeric)) return null;
+      return clampNumber((numeric / 100) * 255, 0, 255);
+    }
+
+    const numeric = Number(token);
+    if (!Number.isFinite(numeric)) return null;
+    return clampNumber(numeric, 0, 255);
+  }
+
+  function parsePercentLikeToken(rawToken) {
+    const token = (rawToken || "").toString().trim();
+    if (!token) return null;
+    if (token.endsWith("%")) {
+      const numeric = Number(token.slice(0, -1));
+      if (!Number.isFinite(numeric)) return null;
+      return clampNumber(numeric, 0, 100);
+    }
+
+    const numeric = Number(token);
+    if (!Number.isFinite(numeric)) return null;
+    return clampNumber(numeric, 0, 100);
+  }
+
+  function parseHexColor(value) {
+    const normalized = (value || "").toString().trim().toLowerCase();
+    const match = normalized.match(/^#([0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/);
+    if (!match) return null;
+
+    const source = match[1];
+    if (source.length === 3 || source.length === 4) {
+      const expanded = source.split("").map((part) => `${part}${part}`).join("");
+      const rgb = expanded.slice(0, 6);
+      const alpha = expanded.length === 8 ? expanded.slice(6, 8) : "ff";
+      return {
+        r: parseInt(rgb.slice(0, 2), 16),
+        g: parseInt(rgb.slice(2, 4), 16),
+        b: parseInt(rgb.slice(4, 6), 16),
+        a: roundedAlpha(parseInt(alpha, 16) / 255)
+      };
+    }
+
+    const alpha = source.length === 8 ? source.slice(6, 8) : "ff";
+    return {
+      r: parseInt(source.slice(0, 2), 16),
+      g: parseInt(source.slice(2, 4), 16),
+      b: parseInt(source.slice(4, 6), 16),
+      a: roundedAlpha(parseInt(alpha, 16) / 255)
+    };
+  }
+
+  function parseRgbFunctionColor(value) {
+    const raw = (value || "").toString().trim();
+    const match = raw.match(/^rgba?\((.*)\)$/i);
+    if (!match) return null;
+
+    const body = match[1].trim();
+    if (!body) return null;
+
+    let channelsPart = body;
+    let alphaPart = null;
+    if (body.includes("/")) {
+      const split = body.split("/");
+      if (split.length !== 2) return null;
+      channelsPart = split[0].trim();
+      alphaPart = split[1].trim();
+    }
+
+    const channelTokens = channelsPart.replace(/,/g, " ").trim().split(/\s+/).filter(Boolean);
+    if (alphaPart == null && channelTokens.length === 4) alphaPart = channelTokens.pop();
+    if (channelTokens.length !== 3) return null;
+
+    const r = parseRgbChannelToken(channelTokens[0]);
+    const g = parseRgbChannelToken(channelTokens[1]);
+    const b = parseRgbChannelToken(channelTokens[2]);
+    if (r == null || g == null || b == null) return null;
+
+    const alpha = alphaPart == null ? 1 : parseAlphaToken(alphaPart);
+    if (alpha == null) return null;
+
+    return {
+      r,
+      g,
+      b,
+      a: roundedAlpha(alpha)
+    };
+  }
+
+  function parseHslFunctionColor(value) {
+    const raw = (value || "").toString().trim();
+    const match = raw.match(/^hsla?\((.*)\)$/i);
+    if (!match) return null;
+
+    const body = match[1].trim();
+    if (!body) return null;
+
+    let channelsPart = body;
+    let alphaPart = null;
+    if (body.includes("/")) {
+      const split = body.split("/");
+      if (split.length !== 2) return null;
+      channelsPart = split[0].trim();
+      alphaPart = split[1].trim();
+    }
+
+    const channelTokens = channelsPart.replace(/,/g, " ").trim().split(/\s+/).filter(Boolean);
+    if (alphaPart == null && channelTokens.length === 4) alphaPart = channelTokens.pop();
+    if (channelTokens.length !== 3) return null;
+
+    const h = parseHueToken(channelTokens[0]);
+    const s = parsePercentLikeToken(channelTokens[1]);
+    const l = parsePercentLikeToken(channelTokens[2]);
+    if (h == null || s == null || l == null) return null;
+
+    const alpha = alphaPart == null ? 1 : parseAlphaToken(alphaPart);
+    if (alpha == null) return null;
+
+    const hsl = normalizeHslControlModel({ kind: "hsl", h, s, l, a: alpha });
+    if (!hsl) return null;
+
+    return {
+      hsl,
+      rgba: hslColorToRgba(hsl)
+    };
+  }
+
+  function parseOklchLightness(rawToken) {
+    const parsed = parseNumericUnitToken(rawToken);
+    if (!parsed) return null;
+    if (parsed.unit && parsed.unit !== "%") return null;
+    if (parsed.unit === "%") return clampNumber(parsed.value / 100, 0, 1);
+    return clampNumber(parsed.value, 0, 1);
+  }
+
+  function normalizeOklchColor(oklch) {
+    if (!oklch || typeof oklch !== "object") return null;
+    const l = Number(oklch.l);
+    const c = Number(oklch.c);
+    const h = Number(oklch.h);
+    const a = oklch.a == null ? 1 : Number(oklch.a);
+    if (!Number.isFinite(l) || !Number.isFinite(c) || !Number.isFinite(h) || !Number.isFinite(a)) return null;
+
+    return {
+      l: clampNumber(l, 0, 1),
+      c: Math.max(0, c),
+      h: normalizedHueDegrees(h),
+      a: roundedAlpha(a)
+    };
+  }
+
+  function parseOklchColor(value) {
+    const raw = (value || "").toString().trim();
+    const match = raw.match(/^oklch\((.*)\)$/i);
+    if (!match) return null;
+
+    const body = match[1].trim();
+    if (!body) return null;
+
+    const slashParts = body.split("/");
+    if (slashParts.length > 2) return null;
+
+    const channels = slashParts[0].trim().split(/\s+/).filter(Boolean);
+    if (channels.length !== 3) return null;
+
+    const l = parseOklchLightness(channels[0]);
+    if (l == null) return null;
+
+    const chromaToken = parseNumericUnitToken(channels[1]);
+    if (!chromaToken || chromaToken.unit) return null;
+    const c = Math.max(0, chromaToken.value);
+
+    const h = parseHueToken(channels[2]);
+    if (h == null) return null;
+
+    const alpha = slashParts.length === 2 ? parseAlphaToken(slashParts[1].trim()) : 1;
+    if (alpha == null) return null;
+
+    return normalizeOklchColor({ l, c, h, a: alpha });
+  }
+
+  function oklabColorFromRgb(r, g, b) {
+    const rs = srgbChannelToLinear(clampNumber(r, 0, 255) / 255);
+    const gs = srgbChannelToLinear(clampNumber(g, 0, 255) / 255);
+    const bs = srgbChannelToLinear(clampNumber(b, 0, 255) / 255);
+
+    const l = (0.4122214708 * rs) + (0.5363325363 * gs) + (0.0514459929 * bs);
+    const m = (0.2119034982 * rs) + (0.6806995451 * gs) + (0.1073969566 * bs);
+    const s = (0.0883024619 * rs) + (0.2817188376 * gs) + (0.6299787005 * bs);
+
+    const lRoot = Math.cbrt(l);
+    const mRoot = Math.cbrt(m);
+    const sRoot = Math.cbrt(s);
+
+    return {
+      L: (0.2104542553 * lRoot) + (0.7936177850 * mRoot) - (0.0040720468 * sRoot),
+      a: (1.9779984951 * lRoot) - (2.4285922050 * mRoot) + (0.4505937099 * sRoot),
+      b: (0.0259040371 * lRoot) + (0.7827717662 * mRoot) - (0.8086757660 * sRoot)
+    };
+  }
+
+  function rgbToOklchColor(rgba) {
+    if (!rgba) return null;
+    const oklab = oklabColorFromRgb(rgba.r, rgba.g, rgba.b);
+    const chroma = Math.sqrt((oklab.a ** 2) + (oklab.b ** 2));
+    const hue = chroma < 0.0000001 ? 0 : normalizedHueDegrees(Math.atan2(oklab.b, oklab.a) * (180 / Math.PI));
+
+    return normalizeOklchColor({
+      l: oklab.L,
+      c: chroma,
+      h: hue,
+      a: roundedAlpha(rgba.a)
+    });
+  }
+
+  function rgbaFromOklchRaw(oklch) {
+    const normalized = normalizeOklchColor(oklch);
+    if (!normalized) return null;
+
+    const hueRadians = normalized.h * (Math.PI / 180);
+    const aChannel = normalized.c * Math.cos(hueRadians);
+    const bChannel = normalized.c * Math.sin(hueRadians);
+
+    const lPrime = normalized.l + (0.3963377774 * aChannel) + (0.2158037573 * bChannel);
+    const mPrime = normalized.l - (0.1055613458 * aChannel) - (0.0638541728 * bChannel);
+    const sPrime = normalized.l - (0.0894841775 * aChannel) - (1.2914855480 * bChannel);
+
+    const l = lPrime ** 3;
+    const m = mPrime ** 3;
+    const s = sPrime ** 3;
+
+    const linearR = (4.0767416621 * l) - (3.3077115913 * m) + (0.2309699292 * s);
+    const linearG = (-1.2684380046 * l) + (2.6097574011 * m) - (0.3413193965 * s);
+    const linearB = (-0.0041960863 * l) - (0.7034186147 * m) + (1.7076147010 * s);
+
+    const srgbR = linearChannelToSrgb(linearR);
+    const srgbG = linearChannelToSrgb(linearG);
+    const srgbB = linearChannelToSrgb(linearB);
+
+    const inGamut = srgbR >= 0 && srgbR <= 1 && srgbG >= 0 && srgbG <= 1 && srgbB >= 0 && srgbB <= 1;
+    return {
+      r: clampNumber(srgbR, 0, 1) * 255,
+      g: clampNumber(srgbG, 0, 1) * 255,
+      b: clampNumber(srgbB, 0, 1) * 255,
+      a: normalized.a,
+      inGamut
+    };
+  }
+
+  function maxDisplayChromaForOklch(lightness, hue, cap = OKLCH_DISPLAY_CHROMA_CAP) {
+    const l = clampNumber(lightness, 0, 1);
+    const h = normalizedHueDegrees(hue);
+    let lower = 0;
+    let upper = Math.max(0, Number(cap) || 0);
+
+    const atUpper = rgbaFromOklchRaw({ l, c: upper, h, a: 1 });
+    if (atUpper && atUpper.inGamut) return upper;
+
+    for (let i = 0; i < 18; i += 1) {
+      const midpoint = (lower + upper) / 2;
+      const sample = rgbaFromOklchRaw({ l, c: midpoint, h, a: 1 });
+      if (sample && sample.inGamut) lower = midpoint;
+      else upper = midpoint;
+    }
+
+    return lower;
+  }
+
+  function clampOklchToDisplayGamut(oklch, cap = OKLCH_DISPLAY_CHROMA_CAP) {
+    const normalized = normalizeOklchColor(oklch);
+    if (!normalized) return null;
+
+    const maxChroma = maxDisplayChromaForOklch(normalized.l, normalized.h, Math.max(cap, normalized.c));
+    return normalizeOklchColor({
+      ...normalized,
+      c: Math.min(normalized.c, maxChroma)
+    });
+  }
+
+  function oklchToRgba(oklch, clampGamut = true) {
+    const normalized = normalizeOklchColor(oklch);
+    if (!normalized) return null;
+
+    const candidate = clampGamut ? clampOklchToDisplayGamut(normalized, OKLCH_DISPLAY_CHROMA_CAP) : normalized;
+    if (!candidate) return null;
+
+    const rgba = rgbaFromOklchRaw(candidate);
+    if (!rgba) return null;
+
+    return {
+      r: rgba.r,
+      g: rgba.g,
+      b: rgba.b,
+      a: roundedAlpha(candidate.a),
+      inGamut: rgba.inGamut,
+      oklch: candidate
+    };
+  }
+
+  function normalizeOklchControlModel(model) {
+    const normalized = normalizeOklchColor(model);
+    if (!normalized) return null;
+
+    const clamped = clampOklchToDisplayGamut(normalized, OKLCH_DISPLAY_CHROMA_CAP);
+    if (!clamped) return null;
+
+    return {
+      kind: "oklch",
+      h: clamped.h,
+      c: clamped.c,
+      l: clamped.l,
+      a: clamped.a
+    };
+  }
+
+  function oklchToString(oklch) {
+    const normalized = normalizeOklchControlModel(oklch);
+    if (!normalized) return "oklch(0 0 0)";
+    const l = trimNumericString(normalized.l, 4);
+    const c = trimNumericString(normalized.c, 4);
+    const h = trimNumericString(normalized.h, 2);
+    if (normalized.a < 1) return `oklch(${l} ${c} ${h} / ${trimNumericString(normalized.a)})`;
+    return `oklch(${l} ${c} ${h})`;
+  }
+
+  function detectColorFormat(value) {
+    const normalized = (value || "").toString().trim().toLowerCase();
+    if (/^#([0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/.test(normalized)) return COLOR_FORMAT_HEX;
+    if (/^rgba?\(/.test(normalized)) return COLOR_FORMAT_RGB;
+    if (/^hsla?\(/.test(normalized)) return COLOR_FORMAT_HSL;
+    if (/^oklch\(/.test(normalized)) return COLOR_FORMAT_OKLCH;
+    return null;
+  }
+
+  function parseColorByDetectedFormat(value) {
+    const format = detectColorFormat(value);
+    if (!format) return null;
+
+    if (format === COLOR_FORMAT_HEX) {
+      const rgba = parseHexColor(value);
+      if (!rgba) return null;
+      return {
+        format,
+        rgba,
+        hsl: rgbToHslColor(rgba.r, rgba.g, rgba.b, rgba.a),
+        oklch: rgbToOklchColor(rgba)
+      };
+    }
+
+    if (format === COLOR_FORMAT_RGB) {
+      const rgba = parseRgbFunctionColor(value);
+      if (!rgba) return null;
+      return {
+        format,
+        rgba,
+        hsl: rgbToHslColor(rgba.r, rgba.g, rgba.b, rgba.a),
+        oklch: rgbToOklchColor(rgba)
+      };
+    }
+
+    if (format === COLOR_FORMAT_HSL) {
+      const parsedHsl = parseHslFunctionColor(value);
+      if (!parsedHsl || !parsedHsl.rgba || !parsedHsl.hsl) return null;
+      return {
+        format,
+        rgba: parsedHsl.rgba,
+        hsl: parsedHsl.hsl,
+        oklch: rgbToOklchColor(parsedHsl.rgba)
+      };
+    }
+
+    const parsedOklch = parseOklchColor(value);
+    if (!parsedOklch) return null;
+    const rgbaFromOklch = oklchToRgba(parsedOklch, true);
+    if (!rgbaFromOklch) return null;
+
+    return {
+      format,
+      rgba: rgbaFromOklch,
+      hsl: rgbToHslColor(rgbaFromOklch.r, rgbaFromOklch.g, rgbaFromOklch.b, rgbaFromOklch.a),
+      oklch: rgbaFromOklch.oklch
+    };
+  }
+
+  function colorControlModelFromParsedColor(parsed) {
+    if (!parsed) return null;
+    if (parsed.format === COLOR_FORMAT_OKLCH) {
+      return normalizeOklchControlModel({
+        h: parsed.oklch && parsed.oklch.h,
+        c: parsed.oklch && parsed.oklch.c,
+        l: parsed.oklch && parsed.oklch.l,
+        a: parsed.oklch && parsed.oklch.a
+      });
+    }
+
+    return normalizeHslControlModel({
+      h: parsed.hsl && parsed.hsl.h,
+      s: parsed.hsl && parsed.hsl.s,
+      l: parsed.hsl && parsed.hsl.l,
+      a: parsed.hsl && parsed.hsl.a
+    });
+  }
+
   function normalizeColorFormat(rawFormat) {
-    return COLOR_FORMAT_VALUES.has(rawFormat) ? rawFormat : COLOR_FORMAT_HEX;
+    return COLOR_FORMAT_VALUES.has(rawFormat) ? rawFormat : null;
   }
 
   function inferColorFormatFromCssValue(value) {
-    const normalized = (value || "").toString().trim().toLowerCase();
-    if (normalized.startsWith("#")) return COLOR_FORMAT_HEX;
-    if (normalized.startsWith("hsl(") || normalized.startsWith("hsla(")) return COLOR_FORMAT_HSL;
-    if (normalized.startsWith("rgb(") || normalized.startsWith("rgba(")) return COLOR_FORMAT_RGB;
-    return COLOR_FORMAT_HEX;
+    return detectColorFormat(value) || COLOR_FORMAT_HEX;
   }
 
-  function colorValueByFormat(rgba, format) {
-    const normalized = normalizeColorFormat(format);
-    const alpha = roundedAlpha(rgba && rgba.a);
-    if (normalized === COLOR_FORMAT_RGB) return rgbaToRgbString({ ...rgba, a: alpha });
-    if (normalized === COLOR_FORMAT_HSL) return rgbaToHslString({ ...rgba, a: alpha });
-    return rgbaToHexString({ ...rgba, a: alpha }, alpha < 1);
+  function colorValueByFormat(controlModel, detectedFormat) {
+    const format = normalizeColorFormat(detectedFormat);
+    if (!format || !controlModel) return "";
+
+    if (controlModel.kind === "oklch") {
+      const oklch = normalizeOklchControlModel(controlModel);
+      if (!oklch) return "";
+      if (format === COLOR_FORMAT_OKLCH) return oklchToString(oklch);
+      const converted = oklchToRgba(oklch, true);
+      if (!converted) return "";
+      if (format === COLOR_FORMAT_HEX) return rgbaToHexString(converted, converted.a < 1).toLowerCase();
+      if (format === COLOR_FORMAT_RGB) return rgbaToRgbString(converted);
+      return hslColorToCssString(rgbToHslColor(converted.r, converted.g, converted.b, converted.a));
+    }
+
+    const hsl = normalizeHslControlModel(controlModel);
+    if (!hsl) return "";
+    const rgba = hslColorToRgba(hsl);
+    if (!rgba) return "";
+    if (format === COLOR_FORMAT_HEX) return rgbaToHexString(rgba, rgba.a < 1).toLowerCase();
+    if (format === COLOR_FORMAT_RGB) return rgbaToRgbString(rgba);
+    if (format === COLOR_FORMAT_HSL) return hslColorToCssString(hsl);
+
+    const converted = rgbToOklchColor(rgba);
+    return converted ? oklchToString(converted) : "";
   }
 
   function isColorPickerProperty(property) {
@@ -632,67 +1178,50 @@
     const normalized = (value || "").toString().trim().toLowerCase();
     if (!normalized) return false;
     if (normalized.includes("gradient(")) return true;
-
-    const hasComma = normalized.includes(",");
-    const isFunctionColor = /^(rgba?|hsla?)\(/.test(normalized);
-    if (hasComma && !isFunctionColor) return true;
     return false;
   }
 
-  function parseComputedRgbColor(value) {
-    const normalized = (value || "").toString().trim().toLowerCase();
-    if (!normalized.startsWith("rgb")) return null;
-
-    const parts = normalized.match(/[0-9]*\.?[0-9]+/g);
-    if (!parts || parts.length < 3) return null;
-
+  function parseCssColorToRgba(value) {
+    const parsed = parseColorByDetectedFormat(value);
+    if (!parsed || !parsed.rgba) return null;
     return {
-      r: clampNumber(parts[0], 0, 255),
-      g: clampNumber(parts[1], 0, 255),
-      b: clampNumber(parts[2], 0, 255),
-      a: parts.length >= 4 ? roundedAlpha(parts[3]) : 1
+      r: parsed.rgba.r,
+      g: parsed.rgba.g,
+      b: parsed.rgba.b,
+      a: roundedAlpha(parsed.rgba.a)
     };
   }
 
-  function parseCssColorToRgba(value) {
-    const raw = (value || "").toString().trim();
-    if (!raw) return null;
-    if (isUnsupportedColorValue(raw)) return null;
-    if (!document || !document.body) return null;
-
-    const probe = document.createElement("span");
-    probe.style.position = "absolute";
-    probe.style.left = "-9999px";
-    probe.style.top = "-9999px";
-    probe.style.pointerEvents = "none";
-    probe.style.color = "";
-    probe.style.color = raw;
-
-    if (!probe.style.color) return null;
-
-    document.body.appendChild(probe);
-    const computed = window.getComputedStyle ? window.getComputedStyle(probe).color : "";
-    probe.remove();
-
-    return parseComputedRgbColor(computed);
-  }
-
-  function colorUiStateForEdit(state, annotationId, edit, parsedColor) {
+  function colorUiStateForEdit(state, annotationId, edit, colorState) {
     if (!state || !state.cssColorUiByAnnotationId || !annotationId || !edit || !edit.id) return null;
+
+    const parsed = colorState && colorState.parsed ? colorState.parsed : null;
+    const controlFromParsed = colorControlModelFromParsedColor(parsed);
+    const detectedFromParsed = parsed ? parsed.format : null;
 
     const existing = state.cssColorUiByAnnotationId.get(annotationId);
     if (existing && existing.editId === edit.id) {
-      return {
+      let controlModel = null;
+      if (existing.controlModel && existing.controlModel.kind === "oklch") controlModel = normalizeOklchControlModel(existing.controlModel);
+      else if (existing.controlModel && existing.controlModel.kind === "hsl") controlModel = normalizeHslControlModel(existing.controlModel);
+      if (!controlModel) controlModel = controlFromParsed;
+
+      const detectedFormat = normalizeColorFormat(existing.detectedFormat) || detectedFromParsed;
+      const nextExisting = {
         editId: existing.editId,
-        format: normalizeColorFormat(existing.format),
-        alpha: roundedAlpha(existing.alpha)
+        open: existing.open === true,
+        detectedFormat,
+        controlModel
       };
+      state.cssColorUiByAnnotationId.set(annotationId, nextExisting);
+      return nextExisting;
     }
 
     const nextState = {
       editId: edit.id,
-      format: inferColorFormatFromCssValue(edit.after),
-      alpha: roundedAlpha(parsedColor && typeof parsedColor.a === "number" ? parsedColor.a : 1)
+      open: false,
+      detectedFormat: detectedFromParsed,
+      controlModel: controlFromParsed
     };
     state.cssColorUiByAnnotationId.set(annotationId, nextState);
     return nextState;
@@ -1446,9 +1975,10 @@
 
         const colorPickerEligible = isColorPickerProperty(edit.property);
         const parsedColorValue = colorPickerEligible ? parseCssColorToRgba(edit.after) : null;
+        const parsedOklchValue = colorPickerEligible ? parseOklchColor(edit.after) : null;
         const propertyIsValid = !edit.property || isValidCssProperty(edit.property);
         const valueLooksValid = !edit.after || isSafeCssValue(edit.after);
-        const colorValueLooksValid = !colorPickerEligible || !edit.after || !!parsedColorValue;
+        const colorValueLooksValid = !colorPickerEligible || !edit.after || !!parsedColorValue || !!parsedOklchValue;
         if (isActiveRow && (!propertyIsValid || !valueLooksValid || !colorValueLooksValid)) {
           row.classList.add("raa-css-edit-row-invalid");
         }
@@ -1554,9 +2084,13 @@
         const colorStateForValue = (rawValue) => {
           const value = typeof rawValue === "string" ? rawValue : (edit.after || "");
           const eligible = isColorPickerProperty(edit.property);
+          const trimmed = value.trim();
           const unsupported = eligible && isUnsupportedColorValue(value);
-          const parsed = eligible && !unsupported ? parseCssColorToRgba(value) : null;
-          return { eligible, unsupported, parsed, value };
+          const detectedFormat = eligible && !unsupported && trimmed.length > 0 ? detectColorFormat(value) : null;
+          const parsed = eligible && !unsupported ? parseColorByDetectedFormat(value) : null;
+          const unsupportedFormat = eligible && !unsupported && trimmed.length > 0 && !detectedFormat;
+          const malformedSupportedFormat = eligible && !unsupported && !!detectedFormat && !parsed;
+          return { eligible, unsupported, detectedFormat, parsed, unsupportedFormat, malformedSupportedFormat, value };
         };
 
         const updateRowValidity = (colorState) => {
@@ -1564,71 +2098,376 @@
           const currentValue = (edit.after || "").toString().trim();
           const propertyValid = !edit.property || isValidCssProperty(edit.property);
           const safeValue = !currentValue || isSafeCssValue(currentValue);
-          const colorValueValid = !nextColorState.eligible || !currentValue || !!nextColorState.parsed;
+          const colorValueValid = !nextColorState.eligible
+            || !currentValue
+            || nextColorState.unsupportedFormat
+            || (!!nextColorState.parsed && !nextColorState.unsupported);
           row.classList.toggle("raa-css-edit-row-invalid", !propertyValid || !safeValue || !colorValueValid);
           return nextColorState;
         };
 
+        const colorRgbaToCss = (rgba) => {
+          if (!rgba) return "transparent";
+          const r = Math.round(clampNumber(rgba.r, 0, 255));
+          const g = Math.round(clampNumber(rgba.g, 0, 255));
+          const b = Math.round(clampNumber(rgba.b, 0, 255));
+          const a = roundedAlpha(rgba.a);
+          if (a < 1) return `rgba(${r}, ${g}, ${b}, ${trimNumericString(a)})`;
+          return `rgb(${r}, ${g}, ${b})`;
+        };
+
+        const gradientFromSamples = (sampleCount, sampleColorAtRatio) => {
+          const steps = Math.max(2, sampleCount);
+          const stops = [];
+
+          for (let index = 0; index < steps; index += 1) {
+            const ratio = steps === 1 ? 0 : index / (steps - 1);
+            const color = sampleColorAtRatio(ratio) || "transparent";
+            stops.push(`${color} ${trimNumericString(ratio * 100, 2)}%`);
+          }
+
+          return `linear-gradient(to right, ${stops.join(", ")})`;
+        };
+
         let colorUiState = null;
         let colorControls = null;
-        let colorInput = null;
-        let colorFormatSelect = null;
-        let colorAlphaRange = null;
-        let colorAlphaValue = null;
+        let colorSwatchButton = null;
+        let colorTuneButton = null;
         let colorMeta = null;
+        let colorPopover = null;
+        let colorFormatBadge = null;
+        let colorPreviewSwatch = null;
+        let colorPreviewValue = null;
+        let colorField = null;
+        let colorFieldCanvas = null;
+        let colorFieldCrosshair = null;
+        let sliderRowsByKey = new Map();
+        let removeOutsidePopoverHandlers = null;
 
         const persistColorUiState = () => {
           if (!annotationId || !colorUiState || !state.cssColorUiByAnnotationId) return;
-          state.cssColorUiByAnnotationId.set(annotationId, {
+
+          const persisted = {
             editId: edit.id,
-            format: normalizeColorFormat(colorUiState.format),
-            alpha: roundedAlpha(colorUiState.alpha)
-          });
+            open: colorUiState.open === true,
+            detectedFormat: normalizeColorFormat(colorUiState.detectedFormat)
+          };
+
+          if (colorUiState.controlModel && colorUiState.controlModel.kind === "oklch") {
+            persisted.controlModel = normalizeOklchControlModel(colorUiState.controlModel);
+          } else if (colorUiState.controlModel && colorUiState.controlModel.kind === "hsl") {
+            persisted.controlModel = normalizeHslControlModel(colorUiState.controlModel);
+          } else {
+            persisted.controlModel = null;
+          }
+
+          state.cssColorUiByAnnotationId.set(annotationId, persisted);
         };
 
-        const ensureColorUiState = (parsedColor) => {
+        const ensureColorUiState = (colorState) => {
+          const stateForUi = colorState || colorStateForValue(edit.after);
           if (!colorUiState) {
-            colorUiState = colorUiStateForEdit(state, annotationId, edit, parsedColor) || {
+            colorUiState = colorUiStateForEdit(state, annotationId, edit, stateForUi) || {
               editId: edit.id,
-              format: inferColorFormatFromCssValue(edit.after),
-              alpha: roundedAlpha(parsedColor && typeof parsedColor.a === "number" ? parsedColor.a : 1)
+              open: false,
+              detectedFormat: stateForUi.parsed ? stateForUi.parsed.format : null,
+              controlModel: stateForUi.parsed ? colorControlModelFromParsedColor(stateForUi.parsed) : null
             };
           }
+
           colorUiState.editId = edit.id;
-          colorUiState.format = normalizeColorFormat(colorUiState.format);
-          colorUiState.alpha = roundedAlpha(colorUiState.alpha);
+          if (stateForUi.parsed) {
+            colorUiState.detectedFormat = stateForUi.parsed.format;
+            colorUiState.controlModel = colorControlModelFromParsedColor(stateForUi.parsed);
+          } else if (!normalizeColorFormat(colorUiState.detectedFormat)) {
+            colorUiState.detectedFormat = null;
+          }
+
+          if (!stateForUi.parsed) colorUiState.open = false;
+          if (colorUiState.controlModel && colorUiState.controlModel.kind === "oklch") {
+            colorUiState.controlModel = normalizeOklchControlModel(colorUiState.controlModel);
+          } else if (colorUiState.controlModel) {
+            colorUiState.controlModel = normalizeHslControlModel(colorUiState.controlModel);
+          }
+
           persistColorUiState();
           return colorUiState;
         };
 
-        const syncColorControls = (colorState) => {
-          if (!colorControls || !colorInput || !colorFormatSelect || !colorAlphaRange || !colorAlphaValue || !colorMeta) return;
+        const previewRgbaForUi = (ui) => {
+          if (!ui || !ui.controlModel) return null;
+          if (ui.controlModel.kind === "oklch") {
+            const converted = oklchToRgba(ui.controlModel, true);
+            return converted ? converted : null;
+          }
+          return hslColorToRgba(ui.controlModel);
+        };
 
-          const ui = ensureColorUiState(colorState && colorState.parsed);
-          const canConvert = !!(colorState && colorState.parsed);
+        const closePopover = () => {
+          if (!colorUiState || colorUiState.open !== true) return;
+          colorUiState.open = false;
+          persistColorUiState();
+          if (removeOutsidePopoverHandlers) {
+            removeOutsidePopoverHandlers();
+            removeOutsidePopoverHandlers = null;
+          }
+          const latestState = colorStateForValue(edit.after);
+          syncColorControls(latestState);
+        };
 
-          colorInput.disabled = !canConvert;
-          colorFormatSelect.disabled = !canConvert;
-          colorAlphaRange.disabled = !canConvert;
+        const ensureOutsidePopoverHandlers = () => {
+          if (removeOutsidePopoverHandlers) return;
 
-          if (canConvert) {
-            colorInput.value = rgbaToHexString(colorState.parsed, false);
-            colorFormatSelect.value = normalizeColorFormat(ui.format);
+          const handlePointerDown = (event) => {
+            if (!colorControls || !colorControls.isConnected) {
+              if (removeOutsidePopoverHandlers) {
+                removeOutsidePopoverHandlers();
+                removeOutsidePopoverHandlers = null;
+              }
+              return;
+            }
+            if (colorControls.contains(event.target)) return;
+            closePopover();
+          };
+
+          const handleEscape = (event) => {
+            if (event.key !== "Escape") return;
+            closePopover();
+          };
+
+          document.addEventListener("pointerdown", handlePointerDown, true);
+          document.addEventListener("keydown", handleEscape, true);
+
+          removeOutsidePopoverHandlers = () => {
+            document.removeEventListener("pointerdown", handlePointerDown, true);
+            document.removeEventListener("keydown", handleEscape, true);
+          };
+        };
+
+        const openPopover = () => {
+          const stateForOpen = colorStateForValue(edit.after);
+          if (!stateForOpen.parsed) return;
+          const ui = ensureColorUiState(stateForOpen);
+          ui.open = true;
+          persistColorUiState();
+          syncColorControls(stateForOpen);
+        };
+
+        const applyControlModelChange = (nextModel) => {
+          const stateForApply = colorStateForValue(edit.after);
+          const ui = ensureColorUiState(stateForApply);
+          if (!ui || !normalizeColorFormat(ui.detectedFormat)) return;
+
+          if (nextModel && nextModel.kind === "oklch") ui.controlModel = normalizeOklchControlModel(nextModel);
+          else ui.controlModel = normalizeHslControlModel(nextModel);
+          if (!ui.controlModel) return;
+
+          persistColorUiState();
+          const serialized = colorValueByFormat(ui.controlModel, ui.detectedFormat);
+          if (!serialized) return;
+          applyEditedValue(serialized);
+        };
+
+        const sliderDefinition = (key, isOklchMode, oklchModel) => {
+          if (key === "h") return { label: "Hue", min: 0, max: 360, step: 1 };
+          if (key === "a") return { label: "Alpha", min: 0, max: 1, step: 0.001 };
+          if (key === "l") return isOklchMode
+            ? { label: "Lightness", min: 0, max: 1, step: 0.001 }
+            : { label: "Lightness", min: 0, max: 100, step: 1 };
+          if (key === "s") return { label: "Saturation", min: 0, max: 100, step: 1 };
+
+          const maxChroma = oklchModel ? maxDisplayChromaForOklch(oklchModel.l, oklchModel.h, OKLCH_DISPLAY_CHROMA_CAP) : OKLCH_DISPLAY_CHROMA_CAP;
+          return { label: "Chroma", min: 0, max: maxChroma, step: 0.001 };
+        };
+
+        const sliderGradient = (key, ui, oklchModel) => {
+          const sampleCount = 26;
+          const isOklchMode = ui && ui.detectedFormat === COLOR_FORMAT_OKLCH;
+
+          if (!ui || !ui.controlModel) return "";
+
+          if (!isOklchMode) {
+            const base = normalizeHslControlModel(ui.controlModel);
+            if (!base) return "";
+
+            return gradientFromSamples(sampleCount, (ratio) => {
+              const sample = { ...base };
+              if (key === "h") sample.h = ratio * 360;
+              else if (key === "s") sample.s = ratio * 100;
+              else if (key === "l") sample.l = ratio * 100;
+              else if (key === "a") sample.a = ratio;
+              const rgba = hslColorToRgba(sample);
+              return colorRgbaToCss(rgba);
+            });
           }
 
-          const alphaPercent = roundedPercentFromAlpha(ui.alpha);
-          colorAlphaRange.value = `${alphaPercent}`;
-          colorAlphaValue.textContent = `${alphaPercent}%`;
+          const base = normalizeOklchControlModel(oklchModel || ui.controlModel);
+          if (!base) return "";
+          const chromaMax = maxDisplayChromaForOklch(base.l, base.h, OKLCH_DISPLAY_CHROMA_CAP);
 
-          if (canConvert) {
-            colorMeta.textContent = "";
-          } else if (colorState && colorState.unsupported) {
-            colorMeta.textContent = "Picker unavailable for this value.";
-          } else if ((edit.after || "").toString().trim().length === 0) {
-            colorMeta.textContent = "Enter a color value to enable picker.";
+          return gradientFromSamples(sampleCount, (ratio) => {
+            const sample = { ...base };
+            if (key === "h") sample.h = ratio * 360;
+            else if (key === "c") sample.c = ratio * chromaMax;
+            else if (key === "l") sample.l = ratio;
+            else if (key === "a") sample.a = ratio;
+            const rgba = oklchToRgba(sample, true);
+            return colorRgbaToCss(rgba);
+          });
+        };
+
+        const drawColorField = (ui) => {
+          if (!ui || !ui.controlModel || !colorFieldCanvas || !colorFieldCrosshair) return;
+          const canvas = colorFieldCanvas;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return;
+
+          const width = canvas.width;
+          const height = canvas.height;
+          const data = ctx.createImageData(width, height);
+          const isOklchMode = ui.detectedFormat === COLOR_FORMAT_OKLCH;
+
+          let crossX = 0;
+          let crossY = 0;
+
+          if (!isOklchMode) {
+            const model = normalizeHslControlModel(ui.controlModel);
+            if (!model) return;
+            crossX = clampNumber(model.s / 100, 0, 1);
+            crossY = clampNumber(1 - (model.l / 100), 0, 1);
+
+            for (let y = 0; y < height; y += 1) {
+              const lightnessRatio = 1 - (y / Math.max(1, height - 1));
+              for (let x = 0; x < width; x += 1) {
+                const saturationRatio = x / Math.max(1, width - 1);
+                const sample = hslColorToRgba({
+                  kind: "hsl",
+                  h: model.h,
+                  s: saturationRatio * 100,
+                  l: lightnessRatio * 100,
+                  a: 1
+                });
+                const offset = (y * width + x) * 4;
+                data.data[offset] = Math.round(clampNumber(sample.r, 0, 255));
+                data.data[offset + 1] = Math.round(clampNumber(sample.g, 0, 255));
+                data.data[offset + 2] = Math.round(clampNumber(sample.b, 0, 255));
+                data.data[offset + 3] = 255;
+              }
+            }
           } else {
-            colorMeta.textContent = "Picker unavailable for this value.";
+            const model = normalizeOklchControlModel(ui.controlModel);
+            if (!model) return;
+            const maxChroma = maxDisplayChromaForOklch(model.l, model.h, OKLCH_DISPLAY_CHROMA_CAP);
+            crossX = maxChroma <= 0 ? 0 : clampNumber(model.c / maxChroma, 0, 1);
+            crossY = clampNumber(1 - model.l, 0, 1);
+
+            for (let y = 0; y < height; y += 1) {
+              const lightness = 1 - (y / Math.max(1, height - 1));
+              for (let x = 0; x < width; x += 1) {
+                const chroma = (x / Math.max(1, width - 1)) * maxChroma;
+                const sample = oklchToRgba({
+                  kind: "oklch",
+                  h: model.h,
+                  c: chroma,
+                  l: lightness,
+                  a: 1
+                }, true);
+                const offset = (y * width + x) * 4;
+                data.data[offset] = Math.round(clampNumber(sample && sample.r, 0, 255));
+                data.data[offset + 1] = Math.round(clampNumber(sample && sample.g, 0, 255));
+                data.data[offset + 2] = Math.round(clampNumber(sample && sample.b, 0, 255));
+                data.data[offset + 3] = 255;
+              }
+            }
           }
+
+          ctx.putImageData(data, 0, 0);
+          colorFieldCrosshair.style.left = `${trimNumericString(crossX * 100, 3)}%`;
+          colorFieldCrosshair.style.top = `${trimNumericString(crossY * 100, 3)}%`;
+        };
+
+        const syncColorControls = (colorState) => {
+          if (!colorControls || !colorSwatchButton || !colorTuneButton || !colorMeta || !colorPopover) return;
+
+          const stateForSync = colorState || colorStateForValue(edit.after);
+          const ui = ensureColorUiState(stateForSync);
+          const parsed = stateForSync.parsed;
+          const parsedRgba = parsed ? parsed.rgba : null;
+
+          if (parsedRgba) colorSwatchButton.style.background = colorRgbaToCss(parsedRgba);
+          else colorSwatchButton.style.background = "linear-gradient(135deg, oklch(0.967 0.0029 264.54), oklch(0.8717 0.0093 258.34))";
+
+          colorSwatchButton.disabled = !parsed;
+          colorTuneButton.disabled = !parsed;
+
+          if (stateForSync.unsupported) {
+            colorMeta.textContent = "Visual tuning is unavailable for this value.";
+          } else if (stateForSync.unsupportedFormat) {
+            colorMeta.textContent = "Visual tuning supports HEX, RGB, HSL, and OKLCH.";
+          } else if (stateForSync.malformedSupportedFormat) {
+            colorMeta.textContent = "Fix this color value to enable visual tuning.";
+          } else if ((edit.after || "").toString().trim().length === 0) {
+            colorMeta.textContent = "Enter a color value to enable visual tuning.";
+          } else {
+            colorMeta.textContent = "";
+          }
+
+          if (!parsed || !ui || !ui.controlModel || !normalizeColorFormat(ui.detectedFormat) || ui.open !== true) {
+            colorPopover.hidden = true;
+            if (removeOutsidePopoverHandlers) {
+              removeOutsidePopoverHandlers();
+              removeOutsidePopoverHandlers = null;
+            }
+            return;
+          }
+
+          colorPopover.hidden = false;
+          ensureOutsidePopoverHandlers();
+          colorFormatBadge.textContent = ui.detectedFormat.toUpperCase();
+
+          const previewRgba = previewRgbaForUi(ui);
+          colorPreviewSwatch.style.background = colorRgbaToCss(previewRgba);
+          colorPreviewValue.textContent = colorValueByFormat(ui.controlModel, ui.detectedFormat);
+
+          drawColorField(ui);
+
+          const isOklchMode = ui.detectedFormat === COLOR_FORMAT_OKLCH;
+          const channelOrder = isOklchMode ? ["h", "c", "l", "a"] : ["h", "s", "l", "a"];
+          const oklchModel = isOklchMode ? normalizeOklchControlModel(ui.controlModel) : null;
+          const hslModel = !isOklchMode ? normalizeHslControlModel(ui.controlModel) : null;
+
+          sliderRowsByKey.forEach((sliderRow, key) => {
+            const visible = channelOrder.includes(key);
+            sliderRow.row.hidden = !visible;
+            if (!visible) return;
+
+            const definition = sliderDefinition(key, isOklchMode, oklchModel);
+            sliderRow.label.textContent = definition.label;
+            sliderRow.input.min = `${definition.min}`;
+            sliderRow.input.max = `${definition.max}`;
+            sliderRow.input.step = `${definition.step}`;
+
+            let value = 0;
+            if (isOklchMode && oklchModel) {
+              if (key === "h") value = oklchModel.h;
+              else if (key === "c") value = oklchModel.c;
+              else if (key === "l") value = oklchModel.l;
+              else value = oklchModel.a;
+            } else if (hslModel) {
+              if (key === "h") value = hslModel.h;
+              else if (key === "s") value = hslModel.s;
+              else if (key === "l") value = hslModel.l;
+              else value = hslModel.a;
+            }
+
+            sliderRow.input.value = `${value}`;
+            sliderRow.value.textContent = key === "a"
+              ? trimNumericString(value, 3)
+              : trimNumericString(value, key === "h" ? 1 : 3);
+            const sliderTrack = sliderGradient(key, ui, oklchModel);
+            sliderRow.input.style.background = sliderTrack;
+            sliderRow.input.style.setProperty("--raa-slider-track", sliderTrack);
+          });
         };
 
         const applyEditedValue = (nextValue, options = {}) => {
@@ -1639,11 +2478,14 @@
 
           const colorState = updateRowValidity(colorStateForValue(edit.after));
           if (colorState.eligible) {
-            const parsed = colorState.parsed;
-            const ui = ensureColorUiState(parsed);
-            if (parsed && options.syncColorUiFromText) {
-              ui.format = inferColorFormatFromCssValue(edit.after);
-              ui.alpha = roundedAlpha(parsed.a);
+            const ui = ensureColorUiState(colorState);
+            if (options.syncColorUiFromText) {
+              if (colorState.parsed) {
+                ui.detectedFormat = colorState.parsed.format;
+                ui.controlModel = colorControlModelFromParsedColor(colorState.parsed);
+              } else {
+                ui.open = false;
+              }
               persistColorUiState();
             }
             syncColorControls(colorState);
@@ -1662,89 +2504,220 @@
           colorControls = document.createElement("div");
           colorControls.className = "raa-css-color-controls";
 
-          const colorHeader = document.createElement("div");
-          colorHeader.className = "raa-css-color-meta";
-          colorHeader.textContent = "Color controls";
+          const colorInline = document.createElement("div");
+          colorInline.className = "raa-css-color-inline";
 
-          const colorRow = document.createElement("div");
-          colorRow.className = "raa-css-color-row";
-
-          colorInput = document.createElement("input");
-          colorInput.type = "color";
-          colorInput.className = "raa-css-color-chip";
-          colorInput.setAttribute("aria-label", "Color picker");
-
-          colorFormatSelect = document.createElement("select");
-          colorFormatSelect.className = "raa-css-color-format";
-          colorFormatSelect.setAttribute("aria-label", "Color format");
-          [
-            { value: COLOR_FORMAT_HEX, label: "HEX" },
-            { value: COLOR_FORMAT_RGB, label: "RGB" },
-            { value: COLOR_FORMAT_HSL, label: "HSL" }
-          ].forEach((optionData) => {
-            const option = document.createElement("option");
-            option.value = optionData.value;
-            option.textContent = optionData.label;
-            colorFormatSelect.appendChild(option);
+          colorSwatchButton = document.createElement("button");
+          colorSwatchButton.type = "button";
+          colorSwatchButton.className = "raa-css-color-swatch";
+          colorSwatchButton.setAttribute("aria-label", "Open color tuning popover");
+          colorSwatchButton.addEventListener("click", () => {
+            if (colorTuneButton.disabled) return;
+            if (colorUiState && colorUiState.open === true) closePopover();
+            else openPopover();
           });
 
-          colorRow.appendChild(colorInput);
-          colorRow.appendChild(colorFormatSelect);
+          colorTuneButton = document.createElement("button");
+          colorTuneButton.type = "button";
+          colorTuneButton.className = "raa-btn raa-css-color-tune";
+          colorTuneButton.textContent = "Tune";
+          colorTuneButton.addEventListener("click", () => {
+            if (colorTuneButton.disabled) return;
+            if (colorUiState && colorUiState.open === true) closePopover();
+            else openPopover();
+          });
 
-          const alphaWrap = document.createElement("div");
-          alphaWrap.className = "raa-css-color-alpha";
-
-          const alphaLabel = document.createElement("span");
-          alphaLabel.textContent = "Alpha";
-
-          colorAlphaRange = document.createElement("input");
-          colorAlphaRange.type = "range";
-          colorAlphaRange.min = "0";
-          colorAlphaRange.max = "100";
-          colorAlphaRange.step = "1";
-
-          colorAlphaValue = document.createElement("span");
-          colorAlphaValue.className = "raa-css-color-alpha-value";
-
-          alphaWrap.appendChild(alphaLabel);
-          alphaWrap.appendChild(colorAlphaRange);
-          alphaWrap.appendChild(colorAlphaValue);
+          colorInline.appendChild(colorSwatchButton);
+          colorInline.appendChild(colorTuneButton);
 
           colorMeta = document.createElement("div");
           colorMeta.className = "raa-css-color-meta";
 
-          colorControls.appendChild(colorHeader);
-          colorControls.appendChild(colorRow);
-          colorControls.appendChild(alphaWrap);
+          colorPopover = document.createElement("div");
+          colorPopover.className = "raa-css-color-popover";
+          colorPopover.hidden = true;
+
+          const popoverHeader = document.createElement("div");
+          popoverHeader.className = "raa-css-color-popover-header";
+
+          const popoverTitle = document.createElement("div");
+          popoverTitle.className = "raa-css-color-popover-title";
+          popoverTitle.textContent = edit.property || "color";
+
+          colorFormatBadge = document.createElement("span");
+          colorFormatBadge.className = "raa-css-color-format-badge";
+
+          const closePopoverButton = document.createElement("button");
+          closePopoverButton.type = "button";
+          closePopoverButton.className = "raa-btn";
+          closePopoverButton.textContent = "Close";
+          closePopoverButton.addEventListener("click", () => closePopover());
+
+          popoverHeader.appendChild(popoverTitle);
+          popoverHeader.appendChild(colorFormatBadge);
+          popoverHeader.appendChild(closePopoverButton);
+
+          const previewWrap = document.createElement("div");
+          previewWrap.className = "raa-css-color-preview";
+
+          colorPreviewSwatch = document.createElement("div");
+          colorPreviewSwatch.className = "raa-css-color-preview-swatch";
+
+          colorPreviewValue = document.createElement("code");
+          colorPreviewValue.className = "raa-css-color-preview-value";
+
+          previewWrap.appendChild(colorPreviewSwatch);
+          previewWrap.appendChild(colorPreviewValue);
+
+          colorField = document.createElement("div");
+          colorField.className = "raa-css-color-field";
+
+          colorFieldCanvas = document.createElement("canvas");
+          colorFieldCanvas.className = "raa-css-color-field-canvas";
+          colorFieldCanvas.width = 180;
+          colorFieldCanvas.height = 120;
+
+          colorFieldCrosshair = document.createElement("div");
+          colorFieldCrosshair.className = "raa-css-color-field-crosshair";
+
+          colorField.appendChild(colorFieldCanvas);
+          colorField.appendChild(colorFieldCrosshair);
+
+          const colorSliders = document.createElement("div");
+          colorSliders.className = "raa-css-color-sliders";
+
+          const createSliderRow = (key) => {
+            const rowNode = document.createElement("label");
+            rowNode.className = "raa-css-color-slider";
+
+            const metaNode = document.createElement("div");
+            metaNode.className = "raa-css-color-slider-meta";
+
+            const labelNode = document.createElement("span");
+            labelNode.className = "raa-css-color-slider-label";
+            labelNode.textContent = key.toUpperCase();
+
+            const valueNode = document.createElement("span");
+            valueNode.className = "raa-css-color-slider-value";
+            valueNode.textContent = "0";
+
+            const inputNode = document.createElement("input");
+            inputNode.type = "range";
+            inputNode.setAttribute("aria-label", `Color ${key} slider`);
+
+            metaNode.appendChild(labelNode);
+            metaNode.appendChild(valueNode);
+            rowNode.appendChild(metaNode);
+            rowNode.appendChild(inputNode);
+
+            colorSliders.appendChild(rowNode);
+            sliderRowsByKey.set(key, {
+              row: rowNode,
+              label: labelNode,
+              value: valueNode,
+              input: inputNode
+            });
+          };
+
+          ["h", "s", "c", "l", "a"].forEach(createSliderRow);
+
+          sliderRowsByKey.forEach((sliderRow, key) => {
+            sliderRow.input.addEventListener("input", (event) => {
+              const stateForSlider = colorStateForValue(edit.after);
+              const ui = ensureColorUiState(stateForSlider);
+              if (!ui || !ui.controlModel) return;
+              const numeric = Number(event.target.value);
+              if (!Number.isFinite(numeric)) return;
+
+              if (ui.detectedFormat === COLOR_FORMAT_OKLCH) {
+                const model = normalizeOklchControlModel(ui.controlModel);
+                if (!model) return;
+                const nextModel = { ...model };
+                if (key === "h") nextModel.h = numeric;
+                else if (key === "c") nextModel.c = numeric;
+                else if (key === "l") nextModel.l = numeric;
+                else if (key === "a") nextModel.a = numeric;
+                else return;
+                applyControlModelChange({ kind: "oklch", ...nextModel });
+                return;
+              }
+
+              const model = normalizeHslControlModel(ui.controlModel);
+              if (!model) return;
+              const nextModel = { ...model };
+              if (key === "h") nextModel.h = numeric;
+              else if (key === "s") nextModel.s = numeric;
+              else if (key === "l") nextModel.l = numeric;
+              else if (key === "a") nextModel.a = numeric;
+              else return;
+              applyControlModelChange({ kind: "hsl", ...nextModel });
+            });
+          });
+
+          let fieldPointerId = null;
+          const applyFieldPoint = (clientX, clientY) => {
+            const stateForField = colorStateForValue(edit.after);
+            const ui = ensureColorUiState(stateForField);
+            if (!ui || !ui.controlModel || !colorField) return;
+
+            const rect = colorField.getBoundingClientRect();
+            if (!rect.width || !rect.height) return;
+            const xRatio = clampNumber((clientX - rect.left) / rect.width, 0, 1);
+            const yRatio = clampNumber((clientY - rect.top) / rect.height, 0, 1);
+
+            if (ui.detectedFormat === COLOR_FORMAT_OKLCH) {
+              const model = normalizeOklchControlModel(ui.controlModel);
+              if (!model) return;
+              const maxChroma = maxDisplayChromaForOklch(model.l, model.h, OKLCH_DISPLAY_CHROMA_CAP);
+              applyControlModelChange({
+                kind: "oklch",
+                h: model.h,
+                c: xRatio * maxChroma,
+                l: 1 - yRatio,
+                a: model.a
+              });
+              return;
+            }
+
+            const model = normalizeHslControlModel(ui.controlModel);
+            if (!model) return;
+            applyControlModelChange({
+              kind: "hsl",
+              h: model.h,
+              s: xRatio * 100,
+              l: (1 - yRatio) * 100,
+              a: model.a
+            });
+          };
+
+          colorField.addEventListener("pointerdown", (event) => {
+            if (colorPopover.hidden) return;
+            fieldPointerId = event.pointerId;
+            colorField.setPointerCapture(event.pointerId);
+            applyFieldPoint(event.clientX, event.clientY);
+            event.preventDefault();
+          });
+
+          colorField.addEventListener("pointermove", (event) => {
+            if (fieldPointerId !== event.pointerId) return;
+            applyFieldPoint(event.clientX, event.clientY);
+          });
+
+          const clearFieldPointer = (event) => {
+            if (fieldPointerId !== event.pointerId) return;
+            fieldPointerId = null;
+          };
+          colorField.addEventListener("pointerup", clearFieldPointer);
+          colorField.addEventListener("pointercancel", clearFieldPointer);
+
+          colorPopover.appendChild(popoverHeader);
+          colorPopover.appendChild(previewWrap);
+          colorPopover.appendChild(colorField);
+          colorPopover.appendChild(colorSliders);
+
+          colorControls.appendChild(colorInline);
           colorControls.appendChild(colorMeta);
-
-          colorInput.addEventListener("input", (event) => {
-            const parsed = parseCssColorToRgba(event.target.value);
-            if (!parsed) return;
-            const ui = ensureColorUiState(parsed);
-            const nextColor = { ...parsed, a: roundedAlpha(ui.alpha) };
-            applyEditedValue(colorValueByFormat(nextColor, ui.format));
-          });
-
-          colorFormatSelect.addEventListener("change", (event) => {
-            const parsed = parseCssColorToRgba(edit.after);
-            if (!parsed) return;
-            const ui = ensureColorUiState(parsed);
-            ui.format = normalizeColorFormat(event.target.value);
-            persistColorUiState();
-            const nextColor = { ...parsed, a: roundedAlpha(ui.alpha) };
-            applyEditedValue(colorValueByFormat(nextColor, ui.format));
-          });
-
-          colorAlphaRange.addEventListener("input", (event) => {
-            const parsed = parseCssColorToRgba(edit.after);
-            if (!parsed) return;
-            const ui = ensureColorUiState(parsed);
-            ui.alpha = roundedAlpha(Number(event.target.value) / 100);
-            persistColorUiState();
-            const nextColor = { ...parsed, a: ui.alpha };
-            applyEditedValue(colorValueByFormat(nextColor, ui.format));
-          });
+          colorControls.appendChild(colorPopover);
 
           syncColorControls(initialColorState);
         }
