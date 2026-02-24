@@ -1962,7 +1962,7 @@
     const cssTab = document.createElement("button");
     cssTab.type = "button";
     cssTab.className = "raa-btn";
-    cssTab.textContent = "Edit CSS";
+    cssTab.textContent = "CSS";
     if (state.auxPanelMode === AUX_MODE_CSS) cssTab.classList.add("raa-btn-active");
     cssTab.addEventListener("click", () => {
       if (state.auxPanelMode !== AUX_MODE_CSS) clearActiveCssEditRow(state, annotation.id);
@@ -1973,7 +1973,7 @@
     const textTab = document.createElement("button");
     textTab.type = "button";
     textTab.className = "raa-btn";
-    textTab.textContent = "Edit Text";
+    textTab.textContent = "Copy";
     if (state.auxPanelMode === AUX_MODE_TEXT) textTab.classList.add("raa-btn-active");
     textTab.addEventListener("click", () => {
       if (state.auxPanelMode !== AUX_MODE_TEXT) clearActiveCssEditRow(state, annotation.id);
@@ -2046,13 +2046,13 @@
       const editCss = document.createElement("button");
       editCss.type = "button";
       editCss.className = "raa-btn";
-      editCss.textContent = "Edit CSS";
+      editCss.textContent = "CSS";
       editCss.addEventListener("click", () => openAux(annotation.id, AUX_MODE_CSS));
 
       const editText = document.createElement("button");
       editText.type = "button";
-      editText.className = "raa-btn";
-      editText.textContent = "Edit Text";
+      editText.className = "raa-btn raa-btn-danger";
+      editText.textContent = "Copy";
       editText.addEventListener("click", () => openAux(annotation.id, AUX_MODE_TEXT));
 
       const remove = document.createElement("button");
@@ -2143,6 +2143,57 @@
     document.body.appendChild(highlight);
 
     return { toolbar, launcher, highlight };
+  }
+
+  function syncUiLabMirror(toolbar, visible) {
+    const existing = document.getElementById("raa-toolbar-mirror");
+    if (!toolbar) {
+      if (existing) existing.remove();
+      return;
+    }
+
+    let mirror = existing;
+    if (!mirror) {
+      mirror = document.createElement("div");
+      mirror.id = "raa-toolbar-mirror";
+      document.body.appendChild(mirror);
+    }
+
+    if (!visible) {
+      mirror.hidden = true;
+      mirror.innerHTML = "";
+      return;
+    }
+
+    const clone = toolbar.cloneNode(true);
+    clone.removeAttribute("id");
+    clone.querySelectorAll("[id]").forEach((node) => node.removeAttribute("id"));
+    clone.querySelectorAll("a, button, input, textarea, select").forEach((node) => {
+      if (node.tagName === "A") node.removeAttribute("href");
+      node.setAttribute("tabindex", "-1");
+    });
+
+    mirror.hidden = false;
+    mirror.innerHTML = "";
+    mirror.appendChild(clone);
+  }
+
+  function bindUiLabMirrorUpdateButton(handler) {
+    let button = document.getElementById("raa-ui-lab-update");
+    if (!button) {
+      button = document.createElement("button");
+      button.id = "raa-ui-lab-update";
+      button.className = "raa-btn";
+      button.type = "button";
+      button.textContent = "Update UI LAB";
+      document.body.appendChild(button);
+    }
+
+    button.onclick = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      handler();
+    };
   }
 
   function loadAllStoredSessions(namespacePrefix) {
@@ -2319,6 +2370,7 @@
 
   function initAnnotator() {
     const context = parseContext() || {};
+    const isUiLab = context.controller === "pages#ui_lab";
     const storageKeyPrefix = context.storage_key_prefix || "rails_agent_annotator";
     const appId = context.app_id || "rails_app";
     const namespacePrefix = storageNamespacePrefix(storageKeyPrefix, appId);
@@ -2468,6 +2520,7 @@
         auxPanelRoot.hidden = true;
         auxPanelRoot.style.display = "none";
       }
+
     };
 
     const setHighlight = (target) => {
@@ -2487,6 +2540,7 @@
     const onMouseOver = (event) => setHighlight(event.target);
     const onClick = (event) => {
       if (!state.selectMode) return;
+      if (event.target && event.target.closest && event.target.closest("#raa-ui-lab-update")) return;
       if (event.target.closest("#" + APP_ID)) return;
 
       event.preventDefault();
@@ -2595,10 +2649,14 @@
     render();
 
     const savedVisibility = window.localStorage.getItem(visibilityPreferenceKey);
-    const toolbarVisible = savedVisibility === "1";
+    const toolbarVisible = isUiLab ? true : savedVisibility === "1";
     state.selectMode = false;
     updateSelectButton();
     setToolbarVisible(toolbarVisible, { activateSelect: false });
+    if (isUiLab) {
+      syncUiLabMirror(ui.toolbar, toolbarVisible);
+      bindUiLabMirrorUpdateButton(() => syncUiLabMirror(ui.toolbar, !ui.toolbar.hidden));
+    }
   }
 
   document.addEventListener("turbo:load", initAnnotator);

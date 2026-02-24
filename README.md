@@ -17,6 +17,7 @@ v1 implementation includes:
 - Left-side auxiliary editor panel for CSS and text rewrites
 - Live CSS edits with in-page preview and markdown diff export
 - Live text rewrite (text/value only) with markdown diff export
+- Bundled Geist Pixel Square for the toolbar title and annotator buttons
 - CSS scope controls for edits (`This item only`, `Similar siblings`, `Entire container`) with live match counts
 - Annotation notes/tag/priority edit/delete controls
 - `localStorage` session persistence

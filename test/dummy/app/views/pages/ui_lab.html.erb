@@ -5,62 +5,89 @@
       min-height: 100vh;
       background: radial-gradient(circle at center, #ecf4fb 0%, #dde8f4 100%);
       padding: 0;
-      display: grid;
-      place-items: center;
     }
 
-    .ui-lab-stub {
-      width: min(560px, calc(100vw - 24px));
-      border: 1px solid #1f2937;
-      border-radius: 12px;
-      background: #ffffff;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    body.ui-lab-shell #raa-toolbar-mirror {
+      --raa-font-pixel: "Geist Pixel Square", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 10px;
+      width: auto;
+      max-width: calc(100vw - 24px);
       color: #111827;
       font-family: Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       font-size: 12px;
       line-height: 1.4;
-      padding: 10px;
+      z-index: 2147483645;
       pointer-events: auto;
     }
 
-    .ui-lab-stub .raa-toolbar-row {
-      margin: 0;
+    body.ui-lab-shell #raa-toolbar-mirror .raa-main-title {
+      font-family: var(--raa-font-pixel);
+      font-size: 13px;
     }
 
-    .ui-lab-stub .raa-panel {
-      margin-top: 8px;
-      border-top: 1px solid #d1d5db;
-      padding-top: 8px;
+    body.ui-lab-shell #raa-highlight {
+      z-index: 2147483647;
+    }
+
+    body.ui-lab-shell #raa-ui-lab-update {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 2147483647;
+    }
+
+    body.ui-lab-shell #raa-launcher {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+    }
+
+    body.ui-lab-shell #raa-toolbar-mirror .raa-toolbar-main,
+    body.ui-lab-shell #raa-toolbar-mirror .raa-toolbar-aux {
+      max-height: none;
+    }
+
+    body.ui-lab-shell #raa-toolbar-mirror .raa-toolbar-main {
+      width: min(560px, calc(100vw - 24px));
+    }
+
+    body.ui-lab-shell #raa-toolbar-mirror .raa-toolbar-aux {
+      width: min(460px, calc(100vw - 24px));
+      order: -1;
+    }
+
+    body.ui-lab-shell #raa-toolbar-mirror .raa-panel,
+    body.ui-lab-shell #raa-toolbar-mirror .raa-aux-content {
+      overflow: visible;
+    }
+
+    body.ui-lab-shell #raa-toolbar-mirror input:not([type="checkbox"]),
+    body.ui-lab-shell #raa-toolbar-mirror select,
+    body.ui-lab-shell #raa-toolbar-mirror textarea {
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    @media (max-width: 980px) {
+      body.ui-lab-shell #raa-toolbar-mirror {
+        max-width: calc(100vw - 24px);
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      body.ui-lab-shell #raa-toolbar-mirror .raa-toolbar-main,
+      body.ui-lab-shell #raa-toolbar-mirror .raa-toolbar-aux {
+        width: auto;
+      }
     }
   </style>
 <% end %>
 
-<main>
-  <section class="ui-lab-stub" id="ui_lab_stub">
-    <div class="raa-toast raa-toast-visible">Copied markdown.</div>
-    <div class="raa-toolbar-row">
-      <button class="raa-btn raa-btn-active" type="button" aria-pressed="true">Select</button>
-      <button class="raa-btn" type="button">Copy Markdown</button>
-      <a class="raa-btn" href="#">Debug</a>
-      <button class="raa-btn" type="button">Close</button>
-      <button class="raa-btn raa-btn-danger" type="button">Clear</button>
-    </div>
-    <div class="raa-panel">
-      <div class="raa-item">
-        <div class="raa-item-header">.sidebar .btn.btn-primary</div>
-        <div class="raa-item-meta">Text: Save</div>
-        <div class="raa-item-controls">
-          <input type="text" value="layout" aria-label="tag" />
-          <select aria-label="priority">
-            <option value="">priority</option>
-            <option value="P0">P0</option>
-            <option value="P1" selected>P1</option>
-            <option value="P2">P2</option>
-          </select>
-        </div>
-        <textarea aria-label="notes">Increase horizontal padding and align icon/text baseline.</textarea>
-        <button class="raa-btn raa-btn-danger" type="button">Delete</button>
-      </div>
-    </div>
-  </section>
-</main>
+<main></main>

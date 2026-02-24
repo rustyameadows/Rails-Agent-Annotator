@@ -6,6 +6,7 @@ module RailsAgentAnnotator
       app.config.assets.precompile += %w[
         rails_agent_annotator/application.css
         rails_agent_annotator/application.js
+        rails_agent_annotator/GeistPixel-Square.woff2
       ]
     end
 

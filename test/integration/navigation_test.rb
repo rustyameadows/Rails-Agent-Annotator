@@ -23,7 +23,7 @@ class NavigationTest < ActionDispatch::IntegrationTest
     get "/ui_lab"
     assert_response :success
     assert_includes response.body, "id=\"raa-root\""
-    assert_includes response.body, "id=\"ui_lab_stub\""
+    assert_not_includes response.body, "id=\"ui_lab_stub\""
     assert_not_includes response.body, "demo-header"
   end
 

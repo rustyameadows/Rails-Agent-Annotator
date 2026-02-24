@@ -7,6 +7,16 @@
 
   <%= yield :head %>
 
+  <%= tag.link rel: "preload", href: asset_path("rails_agent_annotator/GeistPixel-Square.woff2"), as: "font", type: "font/woff2", crossorigin: "anonymous" %>
+  <style>
+    @font-face {
+      font-family: "Geist Pixel Square";
+      src: url("<%= asset_path("rails_agent_annotator/GeistPixel-Square.woff2") %>") format("woff2");
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+  </style>
   <%= stylesheet_link_tag    "rails_agent_annotator/application", media: "all" %>
   <%= javascript_include_tag "rails_agent_annotator/application", defer: true %>
 </head>
